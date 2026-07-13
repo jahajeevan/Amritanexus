@@ -21,6 +21,8 @@ export default function Button({
       'text-ignite-muted hover:text-ignite-text hover:bg-ignite-secondary active:scale-[0.97] transition-all duration-300',
     accent:
       'bg-gradient-to-r from-ignite-accent to-ignite-secondaryAccent text-white hover:brightness-105 active:scale-[0.97] shadow-glow hover:shadow-lift transition-all duration-300',
+    crimson:
+      'bg-crimson-royal text-white hover:brightness-110 active:scale-[0.97] shadow-glowCrimson hover:shadow-crimsonLift transition-all duration-300',
     success:
       'bg-ignite-success text-white hover:brightness-105 active:scale-[0.97] transition-all duration-300',
     danger:

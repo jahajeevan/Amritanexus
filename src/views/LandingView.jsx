@@ -196,7 +196,7 @@ function EventCard({ event, onView }) {
         <div className="mt-5 pt-4 border-t border-ignite-border/40">
           <Button
             onClick={onView}
-            variant={event.status === 'Closed' || event.status === 'Completed' ? 'secondary' : 'primary'}
+            variant={event.status === 'Closed' || event.status === 'Completed' ? 'secondary' : 'crimson'}
             className="w-full h-9 text-[11px]"
             icon={ChevronRight}
           >
@@ -229,11 +229,11 @@ function NodeNetworkCanvas() {
     const particles = [];
     const particleCount = 42;
     const goldTones = [
-      { name: 'CSE', color: '#D4AF37', accent: '#B8860B' },
-      { name: 'AI', color: '#E8D8B5', accent: '#D4AF37' },
-      { name: 'ECE', color: '#B8860B', accent: '#FAF9F6' },
-      { name: 'ME', color: '#6B7280', accent: '#D4AF37' },
-      { name: 'MBA', color: '#1E1E1E', accent: '#B8860B' }
+      { name: 'CSE', color: '#A3133F', accent: '#7D0F30' },
+      { name: 'AI', color: '#D4AF37', accent: '#B8860B' },
+      { name: 'ECE', color: '#7D0F30', accent: '#A3133F' },
+      { name: 'ME', color: '#B8860B', accent: '#D4AF37' },
+      { name: 'MBA', color: '#5C0A24', accent: '#A3133F' }
     ];
 
     class Particle {
@@ -366,7 +366,7 @@ function NodeNetworkCanvas() {
         } else {
           ctx.beginPath();
           ctx.arc(pulse.x, pulse.y, pulse.radius, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(212, 175, 55, ${pulse.alpha})`;
+          ctx.strokeStyle = `rgba(163, 19, 63, ${pulse.alpha})`;
           ctx.lineWidth = 1.2;
           ctx.stroke();
         }
@@ -426,10 +426,10 @@ export default function LandingView({ setView }) {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="inline-flex items-center gap-2 border border-ignite-accent/20 bg-[#F6F3EE] rounded-full px-4 py-1.5 text-[9px] font-bold text-ignite-secondaryAccent shadow-sm uppercase tracking-widest"
+              className="inline-flex items-center gap-2 border border-ignite-crimson/25 bg-ignite-crimson/[0.06] rounded-full px-4 py-1.5 text-[9px] font-bold text-ignite-crimson shadow-sm uppercase tracking-widest"
             >
-              <Cpu className="h-3.5 w-3.5 text-ignite-accent" />
-              Digital Campus Experience Platform
+              <Cpu className="h-3.5 w-3.5 text-ignite-crimson" />
+              Amrita Vishwa Vidyapeetham · NIRF Rank 7
             </motion.div>
 
             <div className="space-y-4">
@@ -462,8 +462,8 @@ export default function LandingView({ setView }) {
             >
               <Button
                 onClick={() => setView('events')}
-                variant="accent"
-                className="h-11 px-8 text-xs font-bold uppercase tracking-wider shadow-glow hover:shadow-lift"
+                variant="crimson"
+                className="h-11 px-8 text-xs font-bold uppercase tracking-wider"
                 icon={ArrowRight}
               >
                 Explore Experiences
@@ -487,7 +487,7 @@ export default function LandingView({ setView }) {
             className="lg:col-span-5 relative w-full h-[450px] lg:h-[480px] rounded-3xl border border-ignite-border bg-white shadow-soft overflow-hidden"
           >
             <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#F6F3EE] px-3 py-1 rounded-full border border-ignite-border/70 text-[8px] font-mono font-bold text-slate-500 uppercase tracking-wider shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-ignite-accent animate-pulse" /> connected streams
+              <span className="h-1.5 w-1.5 rounded-full bg-ignite-crimson animate-pulse" /> connected streams
             </div>
             
             <NodeNetworkCanvas />
@@ -500,7 +500,7 @@ export default function LandingView({ setView }) {
       <section className="py-24 bg-white border-b border-ignite-border relative z-10">
         <div className="mx-auto max-w-7xl px-5 lg:px-8 grid md:grid-cols-12 gap-10">
           <div className="md:col-span-5 text-left">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-accent">// Editorial Statement</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson">// Editorial Statement</span>
             <h2 className="mt-2 text-3xl md:text-4xl font-display font-extrabold text-ignite-text leading-tight">
               The fragmentation of the university experience.
             </h2>
@@ -520,7 +520,7 @@ export default function LandingView({ setView }) {
       <section className="py-24 bg-[#F6F3EE]/40 border-b border-ignite-border relative z-10">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-accent">// Connected Infrastructure</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson">// Connected Infrastructure</span>
             <h2 className="mt-1.5 text-3xl font-display font-extrabold text-ignite-text">One Ecosystem. Everything Connected.</h2>
           </div>
 
@@ -545,7 +545,7 @@ export default function LandingView({ setView }) {
       <section className="py-24 bg-white border-b border-ignite-border relative z-10">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-accent">// Platform telemetry</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson">// Platform telemetry</span>
             <h2 className="mt-1 text-3xl font-display font-extrabold text-ignite-text">Live impact stats</h2>
           </div>
 
@@ -573,7 +573,7 @@ export default function LandingView({ setView }) {
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-14 border-b border-ignite-border pb-6">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-accent">// Curated Schedules</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson">// Curated Schedules</span>
               <h2 className="mt-1 text-3xl font-display font-extrabold text-ignite-text">Featured Experiences</h2>
             </div>
             <Button onClick={() => setView('events')} variant="outline" className="h-9 text-[11px]" icon={ChevronRight}>
@@ -609,7 +609,7 @@ export default function LandingView({ setView }) {
       <section className="py-24 bg-white border-b border-ignite-border relative z-10">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-accent">// Credentials Wall</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson">// Credentials Wall</span>
             <h2 className="mt-1 text-3xl font-display font-extrabold text-ignite-text">Verified Achievements Wall</h2>
           </div>
 
@@ -642,7 +642,7 @@ export default function LandingView({ setView }) {
         <div className="mx-auto max-w-7xl px-5 lg:px-8 grid lg:grid-cols-12 gap-12 items-center">
           
           <div className="lg:col-span-5 space-y-6 text-left">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-accent">// standings leaderboard</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson">// standings leaderboard</span>
             <h2 className="text-3xl font-display font-extrabold text-ignite-text leading-tight">Visual Standings Leaderboard</h2>
             <p className="text-xs md:text-sm text-ignite-muted font-semibold leading-relaxed">
               Every checked-in pass adds credit toward department records. Explore standing gauges below.
@@ -680,7 +680,7 @@ export default function LandingView({ setView }) {
       <section className="py-24 bg-white border-b border-ignite-border relative z-10">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-accent">// launch features</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson">// launch features</span>
             <h2 className="mt-1 text-3xl font-display font-extrabold text-ignite-text">Engineered for absolute scale</h2>
           </div>
 
@@ -703,19 +703,22 @@ export default function LandingView({ setView }) {
       </section>
 
       {/* SECTION 9: FINAL CTA */}
-      <section className="py-28 bg-[#1E1E1E] text-white relative z-10 text-center border-t border-ignite-border/40">
-        <div className="max-w-3xl mx-auto px-5 space-y-7">
+      <section className="py-28 bg-crimson-night text-white relative z-10 text-center border-t border-ignite-accent/15 overflow-hidden">
+        <img src="/amrita-emblem.svg" alt="" aria-hidden className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] opacity-[0.05] pointer-events-none" style={{ filter: 'brightness(0) invert(1)' }} />
+        <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(212,175,55,0.14), transparent 55%)' }} />
+        <div className="max-w-3xl mx-auto px-5 space-y-7 relative">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-ignite-accent">Amrita Vishwa Vidyapeetham · IGNITE 2026</p>
           <h2 className="text-3xl md:text-5xl font-display font-extrabold leading-tight tracking-tight">
             Ready to Shape Your Campus Journey?
           </h2>
-          <p className="text-xs md:text-sm text-slate-400 font-semibold max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs md:text-sm text-white/60 font-semibold max-w-xl mx-auto leading-relaxed">
             Claim your digital pass, verify credentials, and log co-curricular achievements in one cohesive system.
           </p>
           <div className="pt-4 flex justify-center gap-4">
             <Button onClick={() => setView('signin')} variant="accent" className="h-11 px-8 text-xs font-bold uppercase tracking-wider shadow-glow">
               Get Entry Pass
             </Button>
-            <Button onClick={() => setView('events')} variant="outline" className="h-11 px-8 text-xs font-bold uppercase tracking-wider border-slate-700 text-slate-300 hover:bg-slate-800">
+            <Button onClick={() => setView('events')} variant="outline" className="h-11 px-8 text-xs font-bold uppercase tracking-wider border-white/25 text-white/80 hover:bg-white/10">
               Browse Tracks
             </Button>
           </div>

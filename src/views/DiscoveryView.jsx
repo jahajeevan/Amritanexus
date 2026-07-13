@@ -88,8 +88,8 @@ export default function DiscoveryView({ setView }) {
       <section className="bg-white border-b border-ignite-champagne/80 py-16 relative overflow-hidden">
         <div className="mx-auto max-w-7xl px-5 lg:px-8 relative z-10">
           <div className="mb-10 text-center md:text-left">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#B8860B] bg-ignite-secondary border border-ignite-champagne px-3.5 py-1.5 rounded-full inline-block">
-              Campus Directory
+            <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson bg-ignite-crimson/[0.06] border border-ignite-crimson/20 px-3.5 py-1.5 rounded-full inline-block">
+              Amrita Vishwa Vidyapeetham · Events
             </span>
             <h1 className="mt-4 text-4xl md:text-5xl font-display font-bold text-ignite-text leading-tight tracking-tight">
               Discover Programs
@@ -116,14 +116,14 @@ export default function DiscoveryView({ setView }) {
                 onClick={() => setShowFilters(!showFilters)}
                 className={`h-11 px-6 border rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all duration-300 ${
                   showFilters || activeFilterCount > 0
-                    ? 'bg-ignite-primary text-white border-ignite-primary shadow-lift'
+                    ? 'bg-crimson-royal text-white border-ignite-crimson shadow-glowCrimson'
                     : 'border-ignite-champagne text-ignite-muted bg-white hover:border-ignite-accent hover:text-ignite-primary'
                 }`}
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 Filters
                 {activeFilterCount > 0 && (
-                  <span className="ml-1 bg-ignite-accent text-white text-[8px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center border border-ignite-accent/10">
+                  <span className="ml-1 bg-ignite-crimson text-white text-[8px] font-black h-4.5 w-4.5 rounded-full flex items-center justify-center border border-white/10">
                     {activeFilterCount}
                   </span>
                 )}
@@ -210,7 +210,7 @@ export default function DiscoveryView({ setView }) {
                 onClick={() => setCategory(c)}
                 className={`px-5 py-2.5 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all duration-300 ${
                   category === c
-                    ? 'bg-ignite-primary text-white border-ignite-primary shadow-lift'
+                    ? 'bg-crimson-royal text-white border-ignite-crimson shadow-glowCrimson'
                     : 'bg-white border-ignite-champagne text-ignite-muted hover:border-ignite-accent hover:text-ignite-primary'
                 }`}
               >

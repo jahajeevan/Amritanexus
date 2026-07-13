@@ -26,7 +26,7 @@ function Tab({ id, label, active, onClick }) {
       onClick={() => onClick(id)}
       className={`text-[9px] font-bold uppercase tracking-widest py-4.5 px-3 border-b-2 transition-all whitespace-nowrap ${
         active
-          ? 'border-ignite-accent text-ignite-accent font-black'
+          ? 'border-ignite-crimson text-ignite-crimson font-black'
           : 'border-transparent text-ignite-muted hover:text-ignite-text'
       }`}
     >
@@ -124,7 +124,7 @@ function RegistrationForm({ event }) {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="Student Name" placeholder="Rohan Sharma" icon={User} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
-          <Input label="University Email Address" type="email" placeholder="rohan.s@cb.amrita.edu" icon={Mail} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+          <Input label="University Email Address" type="email" placeholder="you@cb.students.amrita.edu" icon={Mail} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
           
           <div className="grid grid-cols-2 gap-3">
             <Input label="Register Number" placeholder="CB.EN.U4CSE23001" value={form.rollNo} onChange={e => setForm({ ...form, rollNo: e.target.value })} required />
@@ -151,7 +151,7 @@ function RegistrationForm({ event }) {
 
           <Button
             type="submit"
-            variant="accent"
+            variant="crimson"
             className="w-full h-12 text-[10px] font-bold uppercase tracking-widest mt-6 rounded-xl"
             disabled={status === 'loading'}
             icon={status === 'loading' ? Loader2 : CheckCircle}
@@ -226,7 +226,7 @@ export default function EventDetailsView({ eventId, setView }) {
               </div>
 
               <div className="p-6 md:p-8">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-ignite-accent bg-ignite-secondary border border-ignite-champagne px-3 py-1 rounded inline-block">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-ignite-crimson bg-ignite-crimson/[0.06] border border-ignite-crimson/20 px-3 py-1 rounded inline-block">
                   {event.category} · {event.department} Department
                 </span>
                 <h1 className="mt-4 text-3xl md:text-4xl font-display font-bold text-ignite-text leading-tight">{event.title}</h1>

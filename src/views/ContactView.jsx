@@ -84,7 +84,7 @@ export default function ContactView() {
         
         {/* Header */}
         <div className="mb-16 text-center max-w-2xl mx-auto">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#B8860B] bg-ignite-secondary border border-ignite-champagne px-3.5 py-1.5 rounded-full inline-block">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-ignite-crimson bg-ignite-crimson/[0.06] border border-ignite-crimson/20 px-3.5 py-1.5 rounded-full inline-block">
             Campus Support
           </span>
           <h1 className="mt-4 text-4xl md:text-5xl font-display font-bold text-ignite-text leading-tight tracking-tight">
@@ -204,7 +204,7 @@ export default function ContactView() {
 
               <Button
                 type="submit"
-                variant="accent"
+                variant="crimson"
                 className="w-full h-12 text-[10px] uppercase tracking-widest font-bold rounded-xl"
                 icon={Send}
                 disabled={status === 'loading'}
