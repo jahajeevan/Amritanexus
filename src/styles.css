@@ -1,0 +1,387 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,600;0,6..96,700;0,6..96,900;1,6..96,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  background: #FAF9F6;
+  color: #1E1E1E;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #FAF9F6;
+  color: #1E1E1E;
+  font-family: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+}
+
+h1, h2, h3, .font-serif-luxury, .font-display {
+  font-family: 'Playfair Display', 'Bodoni Moda', serif;
+  letter-spacing: -0.01em;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(212, 175, 55, 0.15);
+  color: #B8860B;
+}
+
+/* Premium Tech Interactive Glassmorphism */
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(232, 216, 181, 0.5);
+}
+
+.glassmorphism-dark {
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glassmorphism-gold {
+  background: rgba(212, 175, 55, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+/* Background animated glow meshes (Tech Accent & Secondary Cobalt) */
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.09;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bg-blob-gold {
+  background: radial-gradient(circle, #D4AF37 0%, rgba(212, 175, 55, 0) 70%);
+  animation: blob-bounce 20s infinite alternate ease-in-out;
+}
+
+.bg-blob-champagne {
+  background: radial-gradient(circle, #E8D8B5 0%, rgba(232, 216, 181, 0) 70%);
+  animation: blob-bounce-reverse 24s infinite alternate ease-in-out;
+}
+
+@keyframes blob-bounce {
+  0% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(60px, -40px) scale(1.15); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes blob-bounce-reverse {
+  0% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(-60px, 40px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+/* Interactive Hover Lifts & Reflections */
+.hover-lift {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(30, 30, 30, 0.05);
+  border-color: rgba(212, 175, 55, 0.35);
+}
+
+.hover-lift-sm {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift-sm:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(30, 30, 30, 0.02);
+  border-color: rgba(212, 175, 55, 0.22);
+}
+
+/* Tech Gradient Text */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #1E1E1E 20%, #B8860B 80%, #D4AF37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-sky {
+  background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Spotlight Hover Effect Container */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(800px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(212, 175, 55, 0.06), transparent 45%);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.spotlight-card:hover::before {
+  opacity: 1;
+}
+
+/* 3D Stack / Parallax layers */
+.stack-layer {
+  transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Bento Grid System */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .bento-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.15);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.3);
+}
+
+/* Apple Wallet Pass card aspect ratios */
+.pass-card {
+  aspect-ratio: 1.586 / 1;
+}
+
+/* Scanner Terminal laser line animation */
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.animate-scan-line {
+  animation: scan-line 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* ============================================================
+   3D AUTH EXPERIENCE
+   ============================================================ */
+
+.perspective-1000 { perspective: 1400px; }
+.preserve-3d { transform-style: preserve-3d; }
+.backface-hidden { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+
+/* Layered animated mesh background for the auth scene */
+.auth-scene {
+  background:
+    radial-gradient(1100px 620px at 8% -12%, rgba(163, 19, 63, 0.14), transparent 60%),
+    radial-gradient(980px 520px at 112% 8%, rgba(212, 175, 55, 0.16), transparent 55%),
+    radial-gradient(820px 820px at 50% 122%, rgba(163, 19, 63, 0.10), transparent 62%),
+    #F7F4EE;
+}
+.aurora-crimson { background: radial-gradient(circle, #A3133F 0%, rgba(163,19,63,0) 70%); animation: drift-b 20s ease-in-out infinite; }
+
+/* Slowly drifting aurora orbs */
+.aurora-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.aurora-gold { background: radial-gradient(circle, #D4AF37 0%, rgba(212,175,55,0) 70%); animation: drift-a 18s ease-in-out infinite; }
+.aurora-amber { background: radial-gradient(circle, #B8860B 0%, rgba(184,134,11,0) 70%); animation: drift-b 22s ease-in-out infinite; }
+.aurora-champagne { background: radial-gradient(circle, #E8D8B5 0%, rgba(232,216,181,0) 70%); animation: drift-a 26s ease-in-out infinite reverse; }
+
+@keyframes drift-a {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); }
+  50% { transform: translate3d(70px,-50px,0) scale(1.18); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); }
+  50% { transform: translate3d(-60px,45px,0) scale(0.88); }
+}
+
+/* Perspective grid floor */
+.grid-floor {
+  position: absolute;
+  left: 50%;
+  bottom: -10%;
+  width: 200%;
+  height: 60%;
+  transform: translateX(-50%) rotateX(72deg);
+  transform-origin: center bottom;
+  background-image:
+    linear-gradient(rgba(212,175,55,0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212,175,55,0.18) 1px, transparent 1px);
+  background-size: 46px 46px;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 80%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 80%);
+  animation: grid-move 8s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+}
+@keyframes grid-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 46px; }
+}
+
+/* Floating 3D shards / badges around the card */
+.shard {
+  position: absolute;
+  will-change: transform;
+  transform-style: preserve-3d;
+  animation: floaty 7s ease-in-out infinite;
+}
+.shard-2 { animation-duration: 9s; animation-delay: -1.5s; }
+.shard-3 { animation-duration: 11s; animation-delay: -3s; }
+@keyframes floaty {
+  0%, 100% { transform: translate3d(0,0,0) rotate(0deg); }
+  50% { transform: translate3d(0,-18px,0) rotate(6deg); }
+}
+
+/* The tilt card itself */
+.tilt-card {
+  transform-style: preserve-3d;
+  transition: transform 0.18s cubic-bezier(0.16,1,0.3,1);
+  will-change: transform;
+}
+.tilt-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(600px circle at var(--gx, 50%) var(--gy, 0%), rgba(255,255,255,0.35), transparent 45%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  mix-blend-mode: soft-light;
+}
+.tilt-card:hover .tilt-glare { opacity: 1; }
+
+/* Animated conic gradient ring around the card */
+.gradient-ring { position: relative; }
+.gradient-ring::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--angle, 0deg), #A3133F, #D4AF37, #7D0F30, #E8D8B5, #A3133F);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.7;
+  animation: spin-ring 6s linear infinite;
+}
+@property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes spin-ring { to { --angle: 360deg; } }
+
+/* Shimmering gradient text */
+.shimmer-text {
+  background: linear-gradient(100deg, #5C0A24 18%, #A3133F 38%, #D4AF37 54%, #7D0F30 72%, #5C0A24 88%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-pan 5s linear infinite;
+}
+@keyframes shimmer-pan { to { background-position: -220% center; } }
+
+/* OTP inputs */
+.otp-box {
+  width: 3rem;
+  height: 3.5rem;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1E1E1E;
+  background: #ffffff;
+  border: 1.5px solid #E8D8B5;
+  border-radius: 0.85rem;
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+  box-shadow: 0 4px 14px rgba(30,30,30,0.04);
+}
+.otp-box:focus {
+  border-color: #A3133F;
+  box-shadow: 0 0 0 4px rgba(163,19,63,0.14), 0 8px 20px rgba(163,19,63,0.14);
+  transform: translateY(-2px);
+}
+.otp-box.filled { border-color: #A3133F; background: #FEF6F8; }
+
+/* Pressable 3D button (Amrita crimson) */
+.btn-3d {
+  position: relative;
+  transition: transform 0.14s cubic-bezier(0.16,1,0.3,1), box-shadow 0.14s ease;
+  box-shadow: 0 8px 0 -2px rgba(92,10,36,0.45), 0 14px 30px rgba(163,19,63,0.28);
+}
+.btn-3d:hover { transform: translateY(-2px); box-shadow: 0 12px 0 -2px rgba(92,10,36,0.45), 0 20px 40px rgba(163,19,63,0.34); }
+.btn-3d:active { transform: translateY(3px); box-shadow: 0 3px 0 -2px rgba(92,10,36,0.45), 0 6px 16px rgba(163,19,63,0.24); }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-orb, .grid-floor, .shard, .gradient-ring::before, .shimmer-text { animation: none !important; }
+  .tilt-card { transition: none !important; }
+}
+
