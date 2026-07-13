@@ -19,7 +19,7 @@ function CertificateModal({ registration, event, onClose }) {
         .cert-container { 
           width: 840px; 
           margin: 40px auto; 
-          border: 12px double #D4AF37; 
+          border: 12px double #9E1B32; 
           border-radius: 4px; 
           padding: 60px; 
           text-align: center; 
@@ -47,11 +47,11 @@ function CertificateModal({ registration, event, onClose }) {
         .divider {
           width: 80px;
           height: 1px;
-          background: #E8D8B5;
+          background: #E7E8EB;
           margin: 20px auto;
         }
         .sub { 
-          color: #B8860B; 
+          color: #7C1327; 
           font-size: 10px; 
           font-weight: 700; 
           text-transform: uppercase; 
@@ -76,8 +76,8 @@ function CertificateModal({ registration, event, onClose }) {
           font-family: 'Playfair Display', serif; 
           font-size: 36px; 
           font-weight: 700; 
-          color: #B8860B; 
-          border-bottom: 1px solid #E8D8B5; 
+          color: #7C1327; 
+          border-bottom: 1px solid #E7E8EB; 
           display: inline-block; 
           padding-bottom: 5px; 
           margin: 15px 0 25px; 
@@ -112,8 +112,8 @@ function CertificateModal({ registration, event, onClose }) {
         .badge { 
           display: inline-block; 
           background: #F6F3EE; 
-          color: #B8860B; 
-          border: 1px solid #E8D8B5; 
+          color: #7C1327; 
+          border: 1px solid #E7E8EB; 
           border-radius: 0px; 
           padding: 6px 18px; 
           font-size: 10px; 
@@ -126,7 +126,7 @@ function CertificateModal({ registration, event, onClose }) {
           color: #6B7280; 
           font-size: 10px; 
           margin-top: 55px; 
-          border-top: 1px solid #E8D8B5; 
+          border-top: 1px solid #E7E8EB; 
           padding-top: 20px; 
           letter-spacing: 1px;
         }
@@ -290,7 +290,7 @@ export default function StudentDashboardView({ setView }) {
           <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 12% 10%, rgba(212,175,55,0.22), transparent 42%)' }} />
           <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div>
-              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-ignite-accent">Amrita Vishwa Vidyapeetham · Student Workspace</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/60">Amrita Vishwa Vidyapeetham · Student Workspace</p>
               <h1 className="mt-2 font-display text-3xl md:text-4xl font-black tracking-tight">
                 Welcome back, {(user.name || 'Student').split(' ')[0]}
               </h1>
@@ -307,7 +307,7 @@ export default function StudentDashboardView({ setView }) {
               ].map((s) => (
                 <div key={s.label} className="rounded-2xl bg-white/[0.08] border border-white/12 backdrop-blur-sm px-4 py-2.5 text-center min-w-[76px]">
                   <p className="text-xl font-black leading-none">{s.value}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-ignite-accent mt-1.5">{s.label}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-white/60 mt-1.5">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -380,8 +380,8 @@ export default function StudentDashboardView({ setView }) {
                   {[
                     { label: 'Claimed Passes', value: myRegs.length, icon: Ticket, bg: 'bg-[#1E1E1E]/5', text: 'text-ignite-primary' },
                     { label: 'Completions', value: myAttended.length, icon: CheckCircle, bg: 'bg-emerald-50', text: 'text-emerald-600' },
-                    { label: 'Credits Earned', value: totalPoints, icon: Star, bg: 'bg-[#D4AF37]/5', text: 'text-ignite-accent' },
-                    { label: 'Dept Standing', value: `#${myDeptRank}`, icon: Trophy, bg: 'bg-[#B8860B]/5', text: 'text-ignite-secondaryAccent' }
+                    { label: 'Credits Earned', value: totalPoints, icon: Star, bg: 'bg-[#9E1B32]/5', text: 'text-ignite-accent' },
+                    { label: 'Dept Standing', value: `#${myDeptRank}`, icon: Trophy, bg: 'bg-[#7C1327]/5', text: 'text-ignite-secondaryAccent' }
                   ].map(stat => {
                     const Icon = stat.icon;
                     return (
@@ -433,7 +433,7 @@ export default function StudentDashboardView({ setView }) {
                               className="flex items-center justify-between p-4 bg-[#FAF9F6]/60 border border-ignite-champagne/40 rounded-2xl hover:border-ignite-accent/40 hover:bg-white hover-lift-sm transition-all duration-300 cursor-pointer"
                             >
                               <div className="flex items-center gap-3.5">
-                                <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${attended ? 'bg-emerald-500' : reg.status === 'Cancelled' ? 'bg-red-500' : 'bg-[#D4AF37] animate-pulse'}`} />
+                                <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${attended ? 'bg-emerald-500' : reg.status === 'Cancelled' ? 'bg-red-500' : 'bg-[#9E1B32] animate-pulse'}`} />
                                 <div>
                                   <h4 className="text-xs font-bold text-ignite-text leading-snug">{ev?.title || reg.eventTitle}</h4>
                                   <p className="text-[9px] text-ignite-muted font-mono mt-1 font-bold">{ev?.date || reg.eventDate} · {ev?.venue || reg.venue}</p>
@@ -502,11 +502,11 @@ export default function StudentDashboardView({ setView }) {
                         >
                           {/* Emblem watermark + glowing accent orb */}
                           <img src="/amrita-emblem.svg" alt="" aria-hidden className="absolute -right-6 -top-6 h-24 w-24 opacity-[0.08] pointer-events-none" style={{ filter: 'brightness(0) invert(1)' }} />
-                          <div className="absolute -right-8 -bottom-8 h-28 w-28 bg-[#D4AF37]/12 rounded-full filter blur-2xl group-hover:bg-[#D4AF37]/18 transition-colors pointer-events-none" />
+                          <div className="absolute -right-8 -bottom-8 h-28 w-28 bg-[#9E1B32]/12 rounded-full filter blur-2xl group-hover:bg-[#9E1B32]/18 transition-colors pointer-events-none" />
                           
                           <div className="flex justify-between items-start relative z-10">
                             <div>
-                              <span className="text-[8px] font-bold text-ignite-accent uppercase tracking-widest">{reg.eventCategory}</span>
+                              <span className="text-[8px] font-bold text-white/60 uppercase tracking-widest">{reg.eventCategory}</span>
                               <h3 className="font-display font-bold text-sm text-[#FAF9F6] mt-1.5 leading-tight line-clamp-1 group-hover:text-ignite-accent transition-colors">
                                 {reg.eventTitle}
                               </h3>
@@ -514,7 +514,7 @@ export default function StudentDashboardView({ setView }) {
                             <span className={`text-[8px] font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${
                               isAttended ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
                               reg.status === 'Cancelled' ? 'bg-red-500/15 text-red-400 border border-red-500/20' :
-                              'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/20'
+                              'bg-[#9E1B32]/15 text-[#9E1B32] border border-[#9E1B32]/20'
                             }`}>
                               {isAttended ? 'Checked' : reg.status === 'Cancelled' ? 'Cancelled' : 'Active'}
                             </span>
@@ -624,9 +624,9 @@ export default function StudentDashboardView({ setView }) {
                     return (
                       <div key={dep.dept} className={`flex items-center gap-5 px-6 py-4.5 transition-all ${isMyDept ? 'bg-ignite-champagne/15' : ''}`}>
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center font-black text-[10px] ${
-                          index === 0 ? 'bg-[#D4AF37] text-white shadow-sm' :
-                          index === 1 ? 'bg-[#E8D8B5] text-ignite-primary shadow-sm' :
-                          index === 2 ? 'bg-[#B8860B] text-white shadow-sm' :
+                          index === 0 ? 'bg-[#9E1B32] text-white shadow-sm' :
+                          index === 1 ? 'bg-[#E7E8EB] text-ignite-primary shadow-sm' :
+                          index === 2 ? 'bg-[#7C1327] text-white shadow-sm' :
                           'bg-[#FAF9F6] text-ignite-muted border border-ignite-champagne'
                         }`}>
                           {index + 1}
@@ -642,7 +642,7 @@ export default function StudentDashboardView({ setView }) {
 
                           <div className="h-1.5 rounded-full bg-[#FAF9F6] overflow-hidden w-full max-w-xs mt-2 border border-ignite-champagne/30">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#B8860B] via-[#D4AF37] to-[#E8D8B5]"
+                              className="h-full rounded-full bg-gradient-to-r from-[#7C1327] via-[#9E1B32] to-[#E7E8EB]"
                               style={{ width: `${Math.round((dep.points / (sortedLeaderboard[0]?.points || 1)) * 100)}%` }}
                             />
                           </div>

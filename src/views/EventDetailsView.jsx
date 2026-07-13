@@ -16,7 +16,7 @@ const statusColors = {
   'Open': 'bg-emerald-50 text-emerald-700 border-emerald-200',
   'Almost Full': 'bg-amber-50 text-amber-700 border-amber-200',
   'Closed': 'bg-red-50 text-red-650 border-red-200',
-  'Upcoming': 'bg-[#E8D8B5]/20 text-[#B8860B] border-ignite-champagne',
+  'Upcoming': 'bg-[#E7E8EB]/20 text-[#7C1327] border-ignite-champagne',
   'Completed': 'bg-[#F6F3EE] text-ignite-muted border-ignite-champagne',
 };
 
@@ -281,7 +281,7 @@ export default function EventDetailsView({ eventId, setView }) {
                         <ul className="space-y-3.5 text-xs text-ignite-muted font-semibold">
                           {event.rules.split('\n').map((rule, idx) => (
                             <li key={idx} className="flex gap-3 items-start">
-                              <span className="h-5 w-5 rounded bg-ignite-accent/10 text-[#B8860B] text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5 border border-ignite-accent/20">{idx + 1}</span>
+                              <span className="h-5 w-5 rounded bg-ignite-accent/10 text-[#7C1327] text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5 border border-ignite-accent/20">{idx + 1}</span>
                               <span className="leading-relaxed pt-0.5">{rule}</span>
                             </li>
                           ))}
@@ -403,7 +403,7 @@ export default function EventDetailsView({ eventId, setView }) {
               
               <div className="h-1.5 rounded-full bg-ignite-secondary border border-ignite-champagne/20 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#B8860B] to-[#D4AF37] transition-all duration-700"
+                  className="h-full rounded-full bg-gradient-to-r from-[#7C1327] to-[#9E1B32] transition-all duration-700"
                   style={{ width: `${pct}%` }}
                 />
               </div>

@@ -158,9 +158,9 @@ function ScannerTerminal() {
     <div className="space-y-8">
       <SectionHeader title="Verification Terminal" sub="Scan and check-in campus event pass codes." />
       
-      <div className="bg-[#121212] rounded-3xl p-6 md:p-8 font-mono text-xs text-[#D4AF37] border-2 border-ignite-champagne/40 shadow-glow relative overflow-hidden min-h-[260px] flex flex-col justify-between">
+      <div className="bg-[#121212] rounded-3xl p-6 md:p-8 font-mono text-xs text-[#9E1B32] border-2 border-ignite-champagne/40 shadow-glow relative overflow-hidden min-h-[260px] flex flex-col justify-between">
         {/* Laser line scanner animation */}
-        <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent animate-scan-line z-10" />
+        <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-[#9E1B32] to-transparent animate-scan-line z-10" />
         
         <div className="flex justify-between items-start border-b border-white/5 pb-4 mb-4">
           <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">IGNITE Operations Console</div>
@@ -170,22 +170,22 @@ function ScannerTerminal() {
         </div>
 
         <div className="space-y-2 mb-8">
-          <p className="text-[#B8860B]/40 text-[9px]"># INITIALIZING AMRITA OPERATIONS SECURE GATEWAY...</p>
-          <p className="text-[#B8860B]/60 text-[9px]"># READY FOR PASSING CREDENTIAL INPUT. WAITING FOR QR SCAN...</p>
+          <p className="text-[#7C1327]/40 text-[9px]"># INITIALIZING AMRITA OPERATIONS SECURE GATEWAY...</p>
+          <p className="text-[#7C1327]/60 text-[9px]"># READY FOR PASSING CREDENTIAL INPUT. WAITING FOR QR SCAN...</p>
         </div>
 
-        <form onSubmit={handleScan} className="flex items-center gap-3 relative z-10 border-b border-[#D4AF37]/20 pb-2.5">
+        <form onSubmit={handleScan} className="flex items-center gap-3 relative z-10 border-b border-[#9E1B32]/20 pb-2.5">
           <span className="text-ignite-accent font-black animate-pulse text-base">{'>'}</span>
           <input
             value={ticketId}
             onChange={e => setTicketId(e.target.value)}
             placeholder="Place cursor here & scan pass code..."
-            className="flex-1 bg-transparent border-none outline-none text-[#D4AF37] placeholder-slate-700 text-xs font-mono font-bold"
+            className="flex-1 bg-transparent border-none outline-none text-[#9E1B32] placeholder-slate-700 text-xs font-mono font-bold"
             autoFocus
             id="scanner-input"
             autoComplete="off"
           />
-          <button type="submit" className="text-white border border-[#D4AF37]/30 bg-[#D4AF37]/15 rounded-lg px-4 py-1.5 text-[9px] font-bold uppercase hover:bg-[#D4AF37]/25 transition-all">[ENTER]</button>
+          <button type="submit" className="text-white border border-[#9E1B32]/30 bg-[#9E1B32]/15 rounded-lg px-4 py-1.5 text-[9px] font-bold uppercase hover:bg-[#9E1B32]/25 transition-all">[ENTER]</button>
         </form>
 
         <div className="min-h-[40px] pt-4">
@@ -381,7 +381,7 @@ export default function AdminDashboardView({ setView }) {
               <img src="/amrita-emblem.svg" alt="Amrita" className="h-full w-full object-contain" style={{ filter: 'brightness(0) invert(1)' }} draggable={false} />
             </div>
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-widest text-ignite-accent font-sans">Amrita Vishwa Vidyapeetham · Command Center</p>
+              <p className="text-[8px] font-bold uppercase tracking-widest text-white/60 font-sans">Amrita Vishwa Vidyapeetham · Command Center</p>
               <h1 className="text-sm font-bold text-white leading-tight uppercase font-display tracking-widest mt-0.5">IGNITE Operations</h1>
             </div>
           </div>
@@ -402,7 +402,7 @@ export default function AdminDashboardView({ setView }) {
               key={t.id}
               onClick={() => { setTab(t.id); setShowForm(false); setEditTarget(null); }}
               className={`text-[9px] font-bold uppercase tracking-widest py-2 px-1 border-b-2 transition-all shrink-0 ${
-                tab === t.id ? 'border-ignite-accent text-ignite-accent font-black' : 'border-transparent text-slate-400 hover:text-slate-200'
+                tab === t.id ? 'border-white text-white font-black' : 'border-transparent text-white/50 hover:text-white/80'
               }`}
             >
               {t.label}
@@ -422,10 +422,10 @@ export default function AdminDashboardView({ setView }) {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { icon: Calendar, label: 'Total Events', value: events.length, text: 'text-ignite-accent', bg: 'bg-[#D4AF37]/5' },
+                { icon: Calendar, label: 'Total Events', value: events.length, text: 'text-ignite-accent', bg: 'bg-[#9E1B32]/5' },
                 { icon: Users, label: 'Registrations', value: totalRegs, text: 'text-ignite-primary', bg: 'bg-[#1E1E1E]/5' },
                 { icon: CheckCircle, label: 'Checked In', value: totalAttended, text: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { icon: Calendar, label: 'Open Registers', value: openEvents, text: 'text-[#B8860B]', bg: 'bg-[#B8860B]/5' },
+                { icon: Calendar, label: 'Open Registers', value: openEvents, text: 'text-[#7C1327]', bg: 'bg-[#7C1327]/5' },
               ].map(({ icon: Icon, label, value, text, bg }) => (
                 <div key={label} className="bg-white border border-ignite-champagne rounded-2xl p-5 shadow-soft hover-lift-sm transition-all duration-300">
                   <div className={`h-9 w-9 rounded-xl ${bg} border border-ignite-champagne/40 flex items-center justify-center mb-4 text-ignite-accent shrink-0`}>

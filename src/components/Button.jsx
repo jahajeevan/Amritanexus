@@ -8,33 +8,34 @@ export default function Button({
   onClick,
   type = 'button',
   icon: Icon,
-  disabled = false
+  disabled = false,
 }) {
   const styles = {
+    // Primary institutional action — Amrita maroon, flat.
     primary:
-      'bg-ignite-primary text-white hover:bg-ignite-secondaryAccent active:scale-[0.97] shadow-sm hover:shadow-glow transition-all duration-300',
-    secondary:
-      'border border-ignite-border bg-white text-ignite-text hover:bg-ignite-secondary active:scale-[0.97] transition-all duration-300',
-    outline:
-      'border border-ignite-border bg-transparent text-ignite-text hover:bg-ignite-secondary hover:border-ignite-accent active:scale-[0.97] transition-all duration-300',
-    ghost:
-      'text-ignite-muted hover:text-ignite-text hover:bg-ignite-secondary active:scale-[0.97] transition-all duration-300',
-    accent:
-      'bg-gradient-to-r from-ignite-accent to-ignite-secondaryAccent text-white hover:brightness-105 active:scale-[0.97] shadow-glow hover:shadow-lift transition-all duration-300',
+      'bg-amrita-maroon text-white hover:bg-amrita-maroonDark active:translate-y-px shadow-sm transition-all duration-200',
     crimson:
-      'bg-crimson-royal text-white hover:brightness-110 active:scale-[0.97] shadow-glowCrimson hover:shadow-crimsonLift transition-all duration-300',
+      'bg-amrita-maroon text-white hover:bg-amrita-maroonDark active:translate-y-px shadow-sm transition-all duration-200',
+    accent:
+      'bg-amrita-maroon text-white hover:bg-amrita-maroonDark active:translate-y-px shadow-sm transition-all duration-200',
+    secondary:
+      'bg-white text-amrita-ink border border-amrita-line hover:bg-amrita-panel hover:border-amrita-slate/30 active:translate-y-px transition-all duration-200',
+    outline:
+      'bg-transparent text-amrita-ink border border-amrita-line hover:border-amrita-maroon hover:text-amrita-maroon active:translate-y-px transition-all duration-200',
+    ghost:
+      'bg-transparent text-amrita-slate hover:text-amrita-ink hover:bg-amrita-panel active:translate-y-px transition-all duration-200',
     success:
-      'bg-ignite-success text-white hover:brightness-105 active:scale-[0.97] transition-all duration-300',
+      'bg-amrita-success text-white hover:brightness-105 active:translate-y-px transition-all duration-200',
     danger:
-      'bg-ignite-error text-white hover:brightness-105 active:scale-[0.97] transition-all duration-300'
+      'bg-amrita-error text-white hover:brightness-105 active:translate-y-px transition-all duration-200',
   };
 
-  const commonClass = `inline-flex h-9.5 min-w-[110px] items-center justify-center gap-2 rounded-xl px-5 text-xs font-bold uppercase tracking-wider transition-all duration-300 select-none cursor-pointer focus:outline-none disabled:opacity-50 disabled:pointer-events-none ${styles[variant] || styles.primary} ${className}`;
+  const commonClass = `inline-flex h-10 min-w-[110px] items-center justify-center gap-2 rounded-xl px-5 text-xs font-semibold tracking-wide transition-all duration-200 select-none cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amrita-maroon disabled:opacity-45 disabled:pointer-events-none ${styles[variant] || styles.primary} ${className}`;
 
   const inner = (
     <>
       {children}
-      {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
+      {Icon ? <Icon className="h-4 w-4" /> : null}
     </>
   );
 
