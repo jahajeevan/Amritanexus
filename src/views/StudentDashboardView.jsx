@@ -1,680 +1,372 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
-import Button from '../components/Button';
 import QRCodePass from '../components/QRCodePass';
+import { StatCard, Panel, Badge, EmptyState, NavItem } from '../components/ui';
 import {
-  Ticket, Trophy, Bell, Award, User, LogOut, Calendar, CheckCircle,
-  Clock, Star, ChevronRight, Printer, Shield, Eye, ShieldCheck, Mail, Sparkles, FolderLock, PlusCircle, Activity, Cpu
+  Ticket, Trophy, Award, User, LogOut, CheckCircle2, ChevronRight, Printer,
+  LayoutDashboard, IdCard, ArrowRight, Bell, X, QrCode, CalendarCheck, MapPin, Mail, Phone, ShieldCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+/* ── Certificate modal (UI shell in the new system; printed cert stays formal serif) ── */
 function CertificateModal({ registration, event, onClose }) {
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-      <html><head><title>Certificate - ${event?.title}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Bodoni+Moda:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    const w = window.open('', '_blank');
+    w.document.write(`
+      <html><head><title>Certificate — ${event?.title || 'Amrita Nexus'}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
       <style>
-        body { margin: 0; background: #FAF9F6; font-family: 'Inter', sans-serif; -webkit-print-color-adjust: exact; padding: 20px; }
-        .cert-container { 
-          width: 840px; 
-          margin: 40px auto; 
-          border: 12px double #9E1B32; 
-          border-radius: 4px; 
-          padding: 60px; 
-          text-align: center; 
-          position: relative; 
-          background: #FFFFFF; 
-          box-shadow: 0 20px 50px rgba(30, 30, 30, 0.05);
-        }
-        .cert-container::before { 
-          content: ''; 
-          position: absolute; 
-          inset: 8px; 
-          border: 1px solid rgba(212, 175, 55, 0.3); 
-          border-radius: 2px; 
-          pointer-events: none; 
-        }
-        .header-logo {
-          font-family: 'Playfair Display', serif;
-          font-size: 14px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 5px;
-          color: #1E1E1E;
-          margin-bottom: 15px;
-        }
-        .divider {
-          width: 80px;
-          height: 1px;
-          background: #E7E8EB;
-          margin: 20px auto;
-        }
-        .sub { 
-          color: #7C1327; 
-          font-size: 10px; 
-          font-weight: 700; 
-          text-transform: uppercase; 
-          letter-spacing: 4px; 
-          margin-bottom: 35px; 
-        }
-        h1 { 
-          font-family: 'Playfair Display', serif; 
-          font-size: 44px; 
-          color: #1E1E1E; 
-          margin: 10px 0 5px; 
-          font-weight: 600; 
-          font-style: italic;
-        }
-        .to-certify {
-          color: #6B7280;
-          font-size: 14px;
-          margin-top: 25px;
-          font-style: italic;
-        }
-        .name { 
-          font-family: 'Playfair Display', serif; 
-          font-size: 36px; 
-          font-weight: 700; 
-          color: #7C1327; 
-          border-bottom: 1px solid #E7E8EB; 
-          display: inline-block; 
-          padding-bottom: 5px; 
-          margin: 15px 0 25px; 
-          letter-spacing: -0.01em;
-        }
-        .reason {
-          color: #1E1E1E;
-          font-size: 15px;
-          line-height: 1.6;
-          max-width: 550px;
-          margin: 0 auto 30px;
-        }
-        .event { 
-          font-family: 'Playfair Display', serif;
-          font-size: 20px; 
-          font-weight: 700; 
-          color: #1E1E1E; 
-        }
-        .meta { 
-          color: #6B7280; 
-          font-size: 12px; 
-          margin-top: 8px; 
-          letter-spacing: 1px;
-        }
-        .ticket { 
-          font-family: monospace; 
-          font-size: 10px; 
-          color: #94A3B8; 
-          margin-top: 45px; 
-          letter-spacing: 1px;
-        }
-        .badge { 
-          display: inline-block; 
-          background: #F6F3EE; 
-          color: #7C1327; 
-          border: 1px solid #E7E8EB; 
-          border-radius: 0px; 
-          padding: 6px 18px; 
-          font-size: 10px; 
-          font-weight: 700; 
-          margin-top: 25px; 
-          text-transform: uppercase; 
-          letter-spacing: 2px;
-        }
-        .footer { 
-          color: #6B7280; 
-          font-size: 10px; 
-          margin-top: 55px; 
-          border-top: 1px solid #E7E8EB; 
-          padding-top: 20px; 
-          letter-spacing: 1px;
-        }
-        .seal {
-          position: absolute;
-          bottom: 40px;
-          right: 60px;
-          width: 80px;
-          height: 80px;
-          opacity: 0.15;
-        }
-      </style></head>
-      <body>
-        <div class="cert-container">
-          <div class="header-logo">IGNITE 2026</div>
-          <div class="divider"></div>
-          <div class="sub">Verified Digital Credential</div>
-          <h1>Certificate of Achievement</h1>
-          <p class="to-certify">This credential officially certifies that</p>
-          <div class="name">${registration.studentName}</div>
-          <p class="reason">has successfully registered, checked-in, and actively participated in the academic showcase event</p>
-          <p class="event">${event?.title || 'Campus Event'}</p>
-          <p class="meta">${event?.date || ''} · ${event?.venue || ''}</p>
-          <span class="badge">Category: ${event?.category || 'Academic Showcase'}</span>
-          <div class="ticket">Verifiable Security ID: ${registration.ticketId}</div>
-          <div class="footer">Issued by the Amrita Campus Event Coordination Board · Coimbatore</div>
+        body{margin:0;background:#FAFAFB;font-family:Inter,sans-serif;-webkit-print-color-adjust:exact;padding:20px}
+        .c{width:840px;margin:40px auto;border:10px solid #9E1B32;padding:60px;text-align:center;position:relative;background:#fff;box-shadow:0 20px 50px rgba(16,18,24,.06)}
+        .c::before{content:'';position:absolute;inset:8px;border:1px solid rgba(158,27,50,.25);pointer-events:none}
+        .k{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:5px;color:#16181D;margin-bottom:14px}
+        .s{color:#9E1B32;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:4px;margin-bottom:30px}
+        h1{font-family:'Playfair Display',serif;font-size:44px;color:#16181D;margin:8px 0 4px;font-weight:600;font-style:italic}
+        .t{color:#6B7280;font-size:14px;margin-top:22px;font-style:italic}
+        .n{font-family:'Playfair Display',serif;font-size:34px;font-weight:700;color:#9E1B32;border-bottom:1px solid #E7E8EB;display:inline-block;padding-bottom:5px;margin:14px 0 24px}
+        .r{color:#16181D;font-size:15px;line-height:1.6;max-width:540px;margin:0 auto 26px}
+        .e{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#16181D}
+        .m{color:#6B7280;font-size:12px;margin-top:8px;letter-spacing:1px}
+        .b{display:inline-block;background:#FBEEF1;color:#9E1B32;border:1px solid #E7E8EB;padding:6px 18px;font-size:10px;font-weight:700;margin-top:22px;text-transform:uppercase;letter-spacing:2px}
+        .id{font-family:monospace;font-size:10px;color:#9AA1AC;margin-top:42px;letter-spacing:1px}
+        .f{color:#6B7280;font-size:10px;margin-top:50px;border-top:1px solid #E7E8EB;padding-top:18px;letter-spacing:1px}
+      </style></head><body>
+        <div class="c">
+          <div class="k">Amrita Nexus · IGNITE 2026</div>
+          <div class="s">Verified Digital Credential</div>
+          <h1>Certificate of Participation</h1>
+          <p class="t">This certifies that</p>
+          <div class="n">${registration.studentName || registration.name}</div>
+          <p class="r">registered, checked in and actively participated in the following event of IGNITE 2026.</p>
+          <p class="e">${event?.title || 'Campus Event'}</p>
+          <p class="m">${event?.date || ''} · ${event?.venue || ''}</p>
+          <span class="b">${event?.category || 'Academic'}</span>
+          <div class="id">Verification ID: ${registration.ticketId}</div>
+          <div class="f">Issued by the Amrita Campus Event Coordination Board · Coimbatore</div>
         </div>
-        <script>window.onload = () => { window.print(); window.close(); }</script>
-      </body></html>
-    `);
-    printWindow.document.close();
+        <script>window.onload=()=>{window.print();window.close()}</script>
+      </body></html>`);
+    w.document.close();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white border-2 border-ignite-champagne rounded-3xl p-6 md:p-10 max-w-lg w-full shadow-glow relative"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-amrita-ink/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-amrita-line bg-white shadow-lg"
       >
-        <button onClick={onClose} className="absolute top-5 right-5 text-ignite-muted hover:text-ignite-text transition-colors text-lg font-bold">✕</button>
-        
-        <div className="text-center py-4">
-          <div className="h-16 w-16 bg-[#FAF9F6] border border-ignite-champagne rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <Award className="h-8 w-8 text-ignite-accent" />
-          </div>
-          
-          <span className="text-[9px] font-bold text-ignite-accent uppercase tracking-widest bg-ignite-secondary border border-ignite-champagne/40 px-3 py-1 rounded-full">
-            Verifiable Credential
-          </span>
-          
-          <h3 className="text-2xl font-bold font-display text-ignite-text mt-3">Certificate Ready</h3>
-          <p className="text-[11px] text-ignite-muted mt-2 px-6">
-            Your attendance has been checked, cryptographically signed, and added to your co-curricular record.
-          </p>
-
-          <div className="my-6 border border-ignite-champagne/60 rounded-2xl p-5 bg-[#FAF9F6] text-left space-y-4 shadow-inner relative overflow-hidden">
-            <div className="absolute right-3 top-3 opacity-5 pointer-events-none">
-              <Award className="h-24 w-24 text-ignite-accent" />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-[9px] font-bold text-ignite-muted uppercase tracking-wider block">Recipient</span>
-                <p className="text-xs font-bold text-ignite-text mt-0.5">{registration.studentName}</p>
-              </div>
-              <div>
-                <span className="text-[9px] font-bold text-ignite-muted uppercase tracking-wider block">Security ID</span>
-                <p className="text-xs font-mono font-bold text-ignite-text mt-0.5">{registration.ticketId.slice(0, 10)}...</p>
-              </div>
-            </div>
-            
-            <div className="border-t border-ignite-champagne/40 pt-3">
-              <span className="text-[9px] font-bold text-ignite-muted uppercase tracking-wider block">Program Title</span>
-              <p className="text-xs font-bold text-ignite-text mt-0.5 leading-snug">{event?.title}</p>
-            </div>
-            
-            <div className="border-t border-ignite-champagne/40 pt-3 flex justify-between items-center">
-              <div>
-                <span className="text-[9px] font-bold text-ignite-muted uppercase tracking-wider block">Ecosystem Credits</span>
-                <p className="text-sm font-bold text-ignite-secondaryAccent mt-0.5">+{event?.points || 50} credits</p>
-              </div>
-              <span className="text-[9px] font-mono text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded uppercase font-bold">
-                ✓ Verified
-              </span>
+        <div className="flex items-center justify-between border-b border-amrita-lineSoft px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-amrita-maroonSoft text-amrita-maroon"><Award className="h-4 w-4" /></span>
+            <div>
+              <p className="text-[13px] font-bold text-amrita-ink">Certificate ready</p>
+              <p className="text-[11px] text-amrita-muted">Verified credential</p>
             </div>
           </div>
-
-          <div className="flex gap-3 justify-center pt-2">
-            <Button onClick={handlePrint} variant="accent" icon={Printer} className="h-11 px-8 rounded-xl font-bold uppercase tracking-wider text-[11px]">
-              Print Certificate
-            </Button>
-            <button 
-              onClick={onClose} 
-              className="h-11 px-6 rounded-xl border border-ignite-champagne hover:bg-ignite-secondary text-ignite-primary font-bold uppercase tracking-wider text-[11px] transition-all"
-            >
-              Close
-            </button>
+          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg text-amrita-muted hover:bg-amrita-panel"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="space-y-3 p-5">
+          <div className="rounded-xl border border-amrita-line bg-amrita-canvas p-4">
+            <Row k="Recipient" v={registration.studentName || registration.name} />
+            <Row k="Event" v={event?.title} />
+            <Row k="Credits" v={`+${event?.points || 50}`} />
+            <Row k="Verification ID" v={registration.ticketId} mono last />
           </div>
+          <button onClick={handlePrint} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amrita-maroon py-3 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark">
+            <Printer className="h-4 w-4" /> Print certificate
+          </button>
         </div>
       </motion.div>
     </div>
   );
 }
+function Row({ k, v, mono, last }) {
+  return (
+    <div className={`flex items-center justify-between gap-3 py-2 ${last ? '' : 'border-b border-amrita-lineSoft'}`}>
+      <span className="text-[11px] font-medium text-amrita-muted">{k}</span>
+      <span className={`text-[12px] font-semibold text-amrita-ink ${mono ? 'font-mono text-[11px]' : ''}`}>{v}</span>
+    </div>
+  );
+}
+
+const passTone = (r) => (r.attended || r.attendance === 'present') ? 'success' : r.status === 'Cancelled' ? 'danger' : 'maroon';
+const passLabel = (r) => (r.attended || r.attendance === 'present') ? 'Checked in' : r.status === 'Cancelled' ? 'Cancelled' : 'Active';
 
 export default function StudentDashboardView({ setView }) {
   const { user, logout, registrations, events, leaderboard, announcements } = useData();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [activeTicket, setActiveTicket] = useState(null);
-  const [selectedCert, setSelectedCert] = useState(null);
+  const [tab, setTab] = useState('overview');
+  const [activePass, setActivePass] = useState(null);
+  const [cert, setCert] = useState(null);
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF9F6]">
-        <div className="h-16 w-16 bg-white border border-ignite-champagne rounded-full flex items-center justify-center mb-4 shadow-soft">
-          <User className="h-8 w-8 text-ignite-accent/40 animate-pulse" />
+      <div className="grid min-h-[70vh] place-items-center bg-amrita-canvas px-5">
+        <div className="text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-amrita-maroonSoft text-amrita-maroon"><ShieldCheck className="h-6 w-6" /></span>
+          <h2 className="mt-4 text-xl font-bold text-amrita-ink">Sign in required</h2>
+          <p className="mt-1 text-[13px] text-amrita-muted">Please sign in to open your workspace.</p>
+          <button onClick={() => setView('signin')} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-amrita-maroonDark">Student Login <ArrowRight className="h-4 w-4" /></button>
         </div>
-        <h2 className="text-2xl font-bold font-display text-ignite-text">Secure Access Denied</h2>
-        <p className="text-xs text-ignite-muted mt-1 mb-6">Please log in to retrieve your workstation.</p>
-        <Button onClick={() => setView('signin')} variant="accent">Sign In</Button>
       </div>
     );
   }
 
-  // Filter registrations for this student
-  const myRegs = registrations.filter(r => r.userId === user.id || r.email === user.email || r.rollNo === user.rollNo);
-  const myAttended = myRegs.filter(r => r.attended || r.attendance === 'present');
-  const totalPoints = myRegs.reduce((sum, r) => {
-    if (r.status === 'Cancelled') return sum;
-    const ev = events.find(e => e.id === r.eventId);
-    return sum + ((r.attended || r.attendance === 'present') ? (ev?.points || 50) : 0);
+  const myRegs = registrations.filter((r) => r.userId === user.id || r.email === user.email || r.rollNo === user.rollNo);
+  const myAttended = myRegs.filter((r) => r.attended || r.attendance === 'present');
+  const totalPoints = myRegs.reduce((s, r) => {
+    if (r.status === 'Cancelled') return s;
+    const ev = events.find((e) => e.id === r.eventId);
+    return s + ((r.attended || r.attendance === 'present') ? (ev?.points || 50) : 0);
   }, 0);
+  const board = [...leaderboard].sort((a, b) => b.points - a.points);
+  const myRankIdx = board.findIndex((l) => l.dept?.toLowerCase() === user.department?.toLowerCase() || (user.department?.toLowerCase().includes('computer') && l.dept?.toLowerCase() === 'cse'));
+  const myRank = myRankIdx !== -1 ? myRankIdx + 1 : '—';
+  const initials = (user.name || 'S').split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase();
 
-  const sortedLeaderboard = [...leaderboard].sort((a, b) => b.points - a.points);
-  const myDeptRankIdx = sortedLeaderboard.findIndex(l => l.dept.toLowerCase() === user.department?.toLowerCase() || l.dept.toLowerCase() === 'cse'); // fallback
-  const myDeptRank = myDeptRankIdx !== -1 ? myDeptRankIdx + 1 : 4;
-
-  // Render dock app indicators
-  const dockApps = [
-    { id: 'overview', label: 'Overview', icon: Cpu },
-    { id: 'tickets', label: 'Wallet passes', icon: Ticket },
-    { id: 'certificates', label: 'Credentials', icon: Award },
-    { id: 'leaderboard', label: 'Standings', icon: Trophy },
+  const nav = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'passes', label: 'My Passes', icon: Ticket, badge: myRegs.length || undefined },
+    { id: 'certificates', label: 'Certificates', icon: Award, badge: myAttended.length || undefined },
+    { id: 'standings', label: 'Standings', icon: Trophy },
+    { id: 'profile', label: 'Profile', icon: IdCard },
   ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="min-h-screen bg-[#FAF9F6] py-12 relative overflow-hidden"
-    >
-      {/* Background radial orbs */}
-      <div className="bg-blob bg-blob-gold top-1/4 right-0 w-[450px] h-[450px]" />
-      <div className="bg-blob bg-blob-champagne bottom-1/4 left-0 w-[500px] h-[500px]" />
-
-      {/* Premium welcome hero */}
-      <div className="mx-auto max-w-7xl px-5 lg:px-8 relative z-10 mb-8">
-        <div className="relative overflow-hidden rounded-3xl bg-crimson-night text-white p-7 md:p-9 shadow-crimsonLift">
-          <img src="/amrita-emblem.svg" alt="" aria-hidden className="absolute -right-8 -top-10 w-56 h-56 opacity-[0.07] pointer-events-none" style={{ filter: 'brightness(0) invert(1)' }} />
-          <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 12% 10%, rgba(212,175,55,0.22), transparent 42%)' }} />
-          <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <div>
-              <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/60">Amrita Vishwa Vidyapeetham · Student Workspace</p>
-              <h1 className="mt-2 font-display text-3xl md:text-4xl font-black tracking-tight">
-                Welcome back, {(user.name || 'Student').split(' ')[0]}
-              </h1>
-              <p className="mt-2 text-[12px] text-white/65 font-medium">
-                {user.department || 'Student'} · <span className="font-mono">{user.rollNo || user.registerNum}</span>
-              </p>
-            </div>
-            <div className="flex gap-2.5 flex-wrap">
-              {[
-                { label: 'Passes', value: myRegs.length },
-                { label: 'Check-ins', value: myAttended.length },
-                { label: 'Credits', value: totalPoints },
-                { label: 'Dept Rank', value: `#${myDeptRank}` },
-              ].map((s) => (
-                <div key={s.label} className="rounded-2xl bg-white/[0.08] border border-white/12 backdrop-blur-sm px-4 py-2.5 text-center min-w-[76px]">
-                  <p className="text-xl font-black leading-none">{s.value}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-white/60 mt-1.5">{s.label}</p>
+    <div className="min-h-screen bg-amrita-canvas">
+      <div className="mx-auto grid max-w-7xl gap-6 px-5 py-8 lg:grid-cols-12 lg:px-8">
+        {/* Sidebar */}
+        <aside className="lg:col-span-3">
+          <div className="lg:sticky lg:top-24 space-y-4">
+            <div className="rounded-2xl border border-amrita-line bg-white p-5 shadow-xs">
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-xl bg-amrita-maroon text-[14px] font-bold text-white">{initials}</span>
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-bold text-amrita-ink">{user.name}</p>
+                  <p className="truncate font-mono text-[11px] text-amrita-muted">{user.rollNo || user.registerNum}</p>
                 </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <Badge tone="maroon">{user.department}</Badge>
+                <Badge>Year {user.year}</Badge>
+              </div>
+            </div>
+
+            <nav className="rounded-2xl border border-amrita-line bg-white p-2 shadow-xs">
+              {nav.map((n) => (
+                <NavItem key={n.id} {...n} active={tab === n.id} onClick={() => { setTab(n.id); setActivePass(null); }} />
               ))}
-            </div>
-          </div>
-        </div>
-      </div>
+            </nav>
 
-      <div className="mx-auto max-w-7xl px-5 lg:px-8 grid lg:grid-cols-12 gap-8 items-start relative z-10">
-        
-        {/* LEFT DOCK / APP SIDEBAR (Desktop Workstation Dock) */}
-        <aside className="lg:col-span-3 bg-white/80 backdrop-blur-md border border-ignite-champagne rounded-3xl p-6 shadow-soft space-y-8">
-          <div className="flex items-center gap-3.5 pb-4 border-b border-ignite-champagne/40">
-            <div className="h-11 w-11 rounded-xl bg-ignite-crimson/8 border border-ignite-crimson/20 flex items-center justify-center text-ignite-crimson shrink-0 shadow-sm">
-              <User className="h-6 w-6" />
-            </div>
-            <div className="truncate">
-              <h2 className="text-xs font-bold text-ignite-text leading-tight truncate uppercase tracking-wider">{user.name}</h2>
-              <p className="text-[9px] text-ignite-muted font-mono mt-1 font-bold">{user.rollNo || user.registerNum || 'STUDENT_ID'}</p>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <span className="text-[8px] font-bold text-ignite-muted uppercase tracking-widest block mb-3 px-2">Workstation Dock</span>
-            {dockApps.map(app => {
-              const Icon = app.icon;
-              const active = activeTab === app.id;
-              return (
-                <button
-                  key={app.id}
-                  onClick={() => { setActiveTab(app.id); setActiveTicket(null); }}
-                  className={`w-full flex items-center gap-3 px-4.5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all duration-300 ${
-                    active
-                      ? 'bg-crimson-royal text-white shadow-glowCrimson border border-ignite-crimson/20'
-                      : 'text-ignite-muted hover:text-ignite-text hover:bg-ignite-secondary/50 border border-transparent'
-                  }`}
-                >
-                  <Icon className="h-4.5 w-4.5 shrink-0" />
-                  <span>{app.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="border-t border-ignite-champagne/40 pt-5">
-            <button 
-              onClick={() => { logout(); setView('home'); }} 
-              className="w-full h-10 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl text-[10px] uppercase font-bold tracking-wider transition-all flex items-center justify-center gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Exit Workspace
+            <button onClick={() => { logout(); setView('home'); }} className="flex w-full items-center justify-center gap-2 rounded-xl border border-amrita-line bg-white py-2.5 text-[12.5px] font-semibold text-red-600 transition-colors hover:bg-red-50">
+              <LogOut className="h-4 w-4" /> Sign out
             </button>
           </div>
         </aside>
 
-        {/* MAIN OS WORKSPACE */}
-        <main className="lg:col-span-9 space-y-6">
+        {/* Main */}
+        <main className="lg:col-span-9">
           <AnimatePresence mode="wait">
-            
-            {/* OVERVIEW WORKSPACE */}
-            {activeTab === 'overview' && (
-              <motion.div
-                key="overview"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-6"
-              >
-                {/* Stats Widgets */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Claimed Passes', value: myRegs.length, icon: Ticket, bg: 'bg-[#1E1E1E]/5', text: 'text-ignite-primary' },
-                    { label: 'Completions', value: myAttended.length, icon: CheckCircle, bg: 'bg-emerald-50', text: 'text-emerald-600' },
-                    { label: 'Credits Earned', value: totalPoints, icon: Star, bg: 'bg-[#9E1B32]/5', text: 'text-ignite-accent' },
-                    { label: 'Dept Standing', value: `#${myDeptRank}`, icon: Trophy, bg: 'bg-[#7C1327]/5', text: 'text-ignite-secondaryAccent' }
-                  ].map(stat => {
-                    const Icon = stat.icon;
-                    return (
-                      <div key={stat.label} className="bg-white border border-ignite-champagne/65 rounded-2xl p-5 shadow-soft hover-lift-sm transition-all duration-300">
-                        <div className={`h-9 w-9 rounded-xl ${stat.bg} flex items-center justify-center mb-4 border border-ignite-champagne/40`}>
-                          <Icon className={`h-5 w-5 ${stat.text}`} />
-                        </div>
-                        <p className="text-2xl font-black text-ignite-text leading-tight">{stat.value}</p>
-                        <p className="text-[8px] font-bold text-ignite-muted uppercase tracking-widest mt-1.5">{stat.label}</p>
-                      </div>
-                    );
-                  })}
-                </div>
+            <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-6">
 
-                {/* Grid panels */}
-                <div className="grid md:grid-cols-5 gap-6">
-                  
-                  {/* Timeline passing logs (3 cols) */}
-                  <div className="md:col-span-3 bg-white border border-ignite-champagne rounded-3xl p-6 shadow-soft space-y-5">
-                    <div className="flex justify-between items-center pb-3 border-b border-ignite-champagne/40">
-                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-ignite-text flex items-center gap-2">
-                        <Activity className="h-4.5 w-4.5 text-ignite-accent" /> Log Timeline
-                      </h3>
-                      <button onClick={() => setActiveTab('tickets')} className="text-[9px] font-black uppercase text-ignite-accent hover:underline tracking-widest">
-                        Full Deck
-                      </button>
-                    </div>
-
-                    {myRegs.length === 0 ? (
-                      <div className="text-center py-12">
-                        <FolderLock className="h-10 w-10 text-ignite-accent/20 mx-auto" />
-                        <p className="text-xs text-ignite-muted font-bold mt-3">No credential pass logs</p>
-                        <button 
-                          onClick={() => setView('events')} 
-                          className="mt-4 px-5 py-2.5 rounded-xl border border-ignite-champagne hover:bg-[#FAF9F6] text-[10px] uppercase font-bold tracking-widest text-ignite-primary transition-all"
-                        >
-                          Secure Passes
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3.5">
-                        {myRegs.slice(0, 3).map(reg => {
-                          const ev = events.find(e => e.id === reg.eventId);
-                          const attended = reg.attended || reg.attendance === 'present';
-                          return (
-                            <div 
-                              key={reg.id}
-                              onClick={() => { setActiveTicket(reg); setActiveTab('tickets'); }}
-                              className="flex items-center justify-between p-4 bg-[#FAF9F6]/60 border border-ignite-champagne/40 rounded-2xl hover:border-ignite-accent/40 hover:bg-white hover-lift-sm transition-all duration-300 cursor-pointer"
-                            >
-                              <div className="flex items-center gap-3.5">
-                                <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${attended ? 'bg-emerald-500' : reg.status === 'Cancelled' ? 'bg-red-500' : 'bg-[#9E1B32] animate-pulse'}`} />
-                                <div>
-                                  <h4 className="text-xs font-bold text-ignite-text leading-snug">{ev?.title || reg.eventTitle}</h4>
-                                  <p className="text-[9px] text-ignite-muted font-mono mt-1 font-bold">{ev?.date || reg.eventDate} · {ev?.venue || reg.venue}</p>
-                                </div>
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-ignite-muted" />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+              {tab === 'overview' && (
+                <>
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-amrita-ink">Welcome back, {user.name.split(' ')[0]}</h1>
+                    <p className="mt-1 text-[13px] text-amrita-muted">Here's everything on your IGNITE 2026 record.</p>
                   </div>
 
-                  {/* Bulletins Bulletin (2 cols) */}
-                  <div className="md:col-span-2 bg-white border border-ignite-champagne rounded-3xl p-6 shadow-soft space-y-5">
-                    <div className="flex items-center gap-2 pb-3 border-b border-ignite-champagne/40">
-                      <Bell className="h-4.5 w-4.5 text-ignite-accent" />
-                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-ignite-text">Live Updates</h3>
-                    </div>
-                    <div className="space-y-4">
-                      {announcements.slice(0, 2).map(a => (
-                        <div key={a.id} className="pb-3 border-b border-ignite-champagne/30 last:border-0 last:pb-0">
-                          <span className="text-[7.5px] font-mono text-ignite-accent font-bold tracking-wider">{a.date} · {a.time}</span>
-                          <h4 className="font-bold text-[11px] text-ignite-text mt-1 leading-snug">{a.title}</h4>
-                          <p className="text-[9px] text-ignite-muted font-medium mt-1 leading-normal line-clamp-2">{a.content}</p>
-                        </div>
-                      ))}
-                      {announcements.length === 0 && (
-                        <p className="text-[10px] text-ignite-muted text-center py-6">No published notices</p>
+                  <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <StatCard icon={Ticket} label="Passes claimed" value={myRegs.length} />
+                    <StatCard icon={CheckCircle2} label="Check-ins" value={myAttended.length} />
+                    <StatCard icon={Award} label="Credits earned" value={totalPoints} />
+                    <StatCard icon={Trophy} label="Dept standing" value={`#${myRank}`} />
+                  </div>
+
+                  <div className="grid gap-6 lg:grid-cols-5">
+                    <Panel title="Recent activity" className="lg:col-span-3"
+                      action={myRegs.length > 0 && <button onClick={() => setTab('passes')} className="text-[12px] font-semibold text-amrita-maroon hover:text-amrita-maroonDark">View all</button>}>
+                      {myRegs.length === 0 ? (
+                        <EmptyState icon={Ticket} title="No passes yet" hint="Browse the events directory and claim your first entry pass."
+                          action={<button onClick={() => setView('events')} className="inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-4 py-2 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark">Explore events <ArrowRight className="h-3.5 w-3.5" /></button>} />
+                      ) : (
+                        <ul className="divide-y divide-amrita-lineSoft">
+                          {myRegs.slice(0, 4).map((r) => {
+                            const ev = events.find((e) => e.id === r.eventId);
+                            return (
+                              <li key={r.id}>
+                                <button onClick={() => { setActivePass(r); setTab('passes'); }} className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-amrita-canvas">
+                                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amrita-maroonSoft text-amrita-maroon"><CalendarCheck className="h-4 w-4" /></span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[13px] font-semibold text-amrita-ink">{ev?.title || r.eventTitle}</p>
+                                    <p className="truncate text-[11.5px] text-amrita-muted">{ev?.date || r.eventDate} · {ev?.venue || r.venue}</p>
+                                  </div>
+                                  <Badge tone={passTone(r)}>{passLabel(r)}</Badge>
+                                  <ChevronRight className="h-4 w-4 text-amrita-faint" />
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
                       )}
+                    </Panel>
+
+                    <Panel title="Announcements" className="lg:col-span-2">
+                      {announcements.length === 0 ? (
+                        <EmptyState icon={Bell} title="No notices" hint="Updates from coordinators will appear here." />
+                      ) : (
+                        <ul className="divide-y divide-amrita-lineSoft">
+                          {announcements.slice(0, 3).map((a) => (
+                            <li key={a.id} className="px-5 py-3.5">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-amrita-maroon">{a.date} · {a.time}</p>
+                              <p className="mt-1 text-[12.5px] font-semibold text-amrita-ink">{a.title}</p>
+                              <p className="mt-1 line-clamp-2 text-[11.5px] leading-relaxed text-amrita-muted">{a.content}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </Panel>
+                  </div>
+                </>
+              )}
+
+              {tab === 'passes' && (
+                <>
+                  <SectionHead title="My passes" sub={`${myRegs.length} entry ${myRegs.length === 1 ? 'pass' : 'passes'}`} />
+                  {activePass ? (
+                    <div className="mx-auto max-w-md space-y-4">
+                      <button onClick={() => setActivePass(null)} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amrita-maroon hover:text-amrita-maroonDark"><ChevronRight className="h-4 w-4 rotate-180" /> Back to passes</button>
+                      <div className="rounded-2xl border border-amrita-line bg-white p-6 shadow-xs"><QRCodePass registration={activePass} /></div>
                     </div>
-                  </div>
+                  ) : myRegs.length === 0 ? (
+                    <Panel><EmptyState icon={QrCode} title="Your passbook is empty" hint="Claim a pass from any open event to see it here."
+                      action={<button onClick={() => setView('events')} className="inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-4 py-2 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark">Explore events <ArrowRight className="h-3.5 w-3.5" /></button>} /></Panel>
+                  ) : (
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      {myRegs.map((r) => (
+                        <button key={r.id} onClick={() => setActivePass(r)} className="group overflow-hidden rounded-2xl border border-amrita-line bg-white text-left shadow-xs hover-lift-sm">
+                          <div className="flex items-center justify-between bg-crimson-night px-5 py-3.5 text-white">
+                            <div className="flex items-center gap-2">
+                              <QrCode className="h-4 w-4 text-white/70" />
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/70">{r.eventCategory}</span>
+                            </div>
+                            <Badge tone={passTone(r)}>{passLabel(r)}</Badge>
+                          </div>
+                          <div className="p-5">
+                            <p className="text-[14px] font-bold text-amrita-ink">{r.eventTitle}</p>
+                            <div className="mt-3 flex items-center justify-between text-[11.5px] text-amrita-muted">
+                              <span>{r.eventDate}</span>
+                              <span className="font-mono">{r.ticketId}</span>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
 
-                </div>
-              </motion.div>
-            )}
+              {tab === 'certificates' && (
+                <>
+                  <SectionHead title="Certificates" sub="Unlocked after your attendance is verified at the gate" />
+                  {myRegs.length === 0 ? (
+                    <Panel><EmptyState icon={Award} title="No certificates yet" hint="Attend an event and get your pass scanned to unlock an official certificate." /></Panel>
+                  ) : (
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      {myRegs.map((r) => {
+                        const ev = events.find((e) => e.id === r.eventId);
+                        const verified = r.attended || r.attendance === 'present';
+                        return (
+                          <div key={r.id} className="flex flex-col rounded-2xl border border-amrita-line bg-white p-5 shadow-xs">
+                            <div className="flex items-center justify-between">
+                              <Badge tone="maroon">{r.eventCategory}</Badge>
+                              <Badge tone={verified ? 'success' : 'neutral'}>{verified ? 'Verified' : 'Awaiting check-in'}</Badge>
+                            </div>
+                            <p className="mt-3 text-[14px] font-bold text-amrita-ink">{r.eventTitle}</p>
+                            <p className="mt-1 font-mono text-[11px] text-amrita-muted">{r.ticketId}</p>
+                            <button disabled={!verified} onClick={() => verified && setCert({ r, ev })}
+                              className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl border border-amrita-line py-2.5 text-[12px] font-semibold text-amrita-ink transition-colors enabled:hover:border-amrita-maroon enabled:hover:text-amrita-maroon disabled:opacity-45">
+                              <Award className="h-4 w-4" /> {verified ? 'View certificate' : 'Locked'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
 
-            {/* WALLET TICKETS WORKSPACE */}
-            {activeTab === 'tickets' && (
-              <motion.div
-                key="tickets"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-6"
-              >
-                {activeTicket ? (
-                  <div className="bg-white border border-ignite-champagne rounded-3xl p-6 shadow-soft max-w-md mx-auto space-y-5">
-                    <button 
-                      onClick={() => setActiveTicket(null)} 
-                      className="text-[10px] font-bold text-ignite-accent hover:underline flex items-center gap-1.5 uppercase tracking-wider mb-2"
-                    >
-                      ← Back to passbook deck
-                    </button>
-                    <QRCodePass registration={activeTicket} />
-                  </div>
-                ) : (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {myRegs.map((reg) => {
-                      const isAttended = reg.attended || reg.attendance === 'present';
+              {tab === 'standings' && (
+                <>
+                  <SectionHead title="Department standings" sub="Credits accrue from verified check-ins" />
+                  <Panel bodyClass="divide-y divide-amrita-lineSoft">
+                    {board.map((d, i) => {
+                      const mine = i + 1 === myRank;
                       return (
-                        <div 
-                          key={reg.id}
-                          onClick={() => setActiveTicket(reg)}
-                          className="bg-crimson-night border border-ignite-accent/25 rounded-2xl p-6 shadow-crimsonLift cursor-pointer hover:scale-[1.01] transition-transform duration-300 pass-card flex flex-col justify-between text-white relative overflow-hidden group"
-                        >
-                          {/* Emblem watermark + glowing accent orb */}
-                          <img src="/amrita-emblem.svg" alt="" aria-hidden className="absolute -right-6 -top-6 h-24 w-24 opacity-[0.08] pointer-events-none" style={{ filter: 'brightness(0) invert(1)' }} />
-                          <div className="absolute -right-8 -bottom-8 h-28 w-28 bg-[#9E1B32]/12 rounded-full filter blur-2xl group-hover:bg-[#9E1B32]/18 transition-colors pointer-events-none" />
-                          
-                          <div className="flex justify-between items-start relative z-10">
-                            <div>
-                              <span className="text-[8px] font-bold text-white/60 uppercase tracking-widest">{reg.eventCategory}</span>
-                              <h3 className="font-display font-bold text-sm text-[#FAF9F6] mt-1.5 leading-tight line-clamp-1 group-hover:text-ignite-accent transition-colors">
-                                {reg.eventTitle}
-                              </h3>
+                        <div key={d.dept} className={`flex items-center gap-4 px-5 py-4 ${mine ? 'bg-amrita-maroonSoft/50' : ''}`}>
+                          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[13px] font-bold ${i === 0 ? 'bg-amrita-maroon text-white' : 'bg-amrita-panel text-amrita-slate'}`}>{i + 1}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-[13.5px] font-semibold text-amrita-ink">{d.dept}</p>
+                              {mine && <Badge tone="maroon">You</Badge>}
                             </div>
-                            <span className={`text-[8px] font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${
-                              isAttended ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
-                              reg.status === 'Cancelled' ? 'bg-red-500/15 text-red-400 border border-red-500/20' :
-                              'bg-[#9E1B32]/15 text-[#9E1B32] border border-[#9E1B32]/20'
-                            }`}>
-                              {isAttended ? 'Checked' : reg.status === 'Cancelled' ? 'Cancelled' : 'Active'}
-                            </span>
-                          </div>
-
-                          <div className="mt-8 flex justify-between items-end border-t border-white/10 pt-4 text-[9px] font-bold tracking-widest text-slate-400 relative z-10">
-                            <div>
-                              <p className="text-[7.5px] uppercase tracking-wider text-slate-500">Passholder</p>
-                              <p className="text-[#FAF9F6] mt-0.5 font-bold">{reg.studentName}</p>
-                            </div>
-                            <div>
-                              <p className="text-[7.5px] uppercase tracking-wider text-right text-slate-500">Gate Pass ID</p>
-                              <p className="font-mono text-[#FAF9F6] mt-0.5 font-bold">{reg.ticketId.slice(0, 12)}</p>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-amrita-panel max-w-sm">
+                              <div className="h-full rounded-full bg-amrita-maroon" style={{ width: `${Math.round((d.points / (board[0]?.points || 1)) * 100)}%` }} />
                             </div>
                           </div>
+                          <span className="text-[13px] font-bold text-amrita-maroon">{d.points.toLocaleString('en-IN')}</span>
                         </div>
                       );
                     })}
+                  </Panel>
+                </>
+              )}
 
-                    {myRegs.length === 0 && (
-                      <div className="col-span-2 text-center py-20 bg-white border border-ignite-champagne rounded-3xl shadow-soft">
-                        <Ticket className="h-12 w-12 text-ignite-accent/20 mx-auto" />
-                        <p className="text-xs text-ignite-muted font-bold mt-2">Passbook deck is empty</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {/* CREDENTIALS WORKSPACE */}
-            {activeTab === 'certificates' && (
-              <motion.div
-                key="certificates"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="space-y-6"
-              >
-                <div className="p-4 bg-white border border-ignite-champagne rounded-2xl flex items-start gap-3 shadow-soft">
-                  <Award className="h-5 w-5 text-ignite-accent shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-ignite-muted leading-relaxed font-semibold">
-                    Certificates are compiled post event gate scans. Select verified passes below to print your official credentials.
-                  </p>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  {myRegs.map(reg => {
-                    const ev = events.find(e => e.id === reg.eventId);
-                    const isVerified = reg.attended || reg.attendance === 'present';
-                    return (
-                      <div key={reg.id} className="bg-white border border-ignite-champagne rounded-2xl p-6 shadow-soft flex flex-col justify-between hover-lift-sm transition-all duration-300">
-                        <div>
-                          <div className="flex justify-between items-start">
-                            <span className="text-[9px] font-bold text-ignite-accent uppercase tracking-wider">{reg.eventCategory}</span>
-                            <span className={`text-[8.5px] font-bold uppercase tracking-wider ${isVerified ? 'text-emerald-600' : 'text-slate-400'}`}>
-                              {isVerified ? '✓ Verified' : 'Awaiting Check-in'}
-                            </span>
+              {tab === 'profile' && (
+                <>
+                  <SectionHead title="Profile" sub="Your permanent student record — used to auto-fill registrations" />
+                  <Panel>
+                    <dl className="divide-y divide-amrita-lineSoft">
+                      {[
+                        { icon: User, k: 'Full name', v: user.name },
+                        { icon: Mail, k: 'University email', v: user.email },
+                        { icon: IdCard, k: 'Register number', v: user.rollNo || user.registerNum },
+                        { icon: LayoutDashboard, k: 'Department', v: user.department },
+                        { icon: CalendarCheck, k: 'Academic year', v: `Year ${user.year}` },
+                        { icon: Phone, k: 'Phone', v: user.phone || '—' },
+                      ].map((row) => (
+                        <div key={row.k} className="flex items-center gap-3 px-5 py-4">
+                          <span className="grid h-9 w-9 place-items-center rounded-lg bg-amrita-panel text-amrita-muted"><row.icon className="h-4 w-4" /></span>
+                          <div className="flex-1">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-amrita-muted">{row.k}</p>
+                            <p className="text-[13.5px] font-semibold text-amrita-ink">{row.v}</p>
                           </div>
-                          <h4 className="font-bold text-xs text-ignite-text mt-3 leading-snug">{reg.eventTitle}</h4>
-                          <p className="text-[9px] text-ignite-muted font-mono mt-1 font-bold">ID: {reg.ticketId.slice(0, 14)}...</p>
                         </div>
-
-                        <div className="border-t border-ignite-champagne/40 pt-4 mt-6 flex justify-end">
-                          <Button 
-                            onClick={() => {
-                              if (isVerified) setSelectedCert({ reg, ev });
-                            }}
-                            disabled={!isVerified} 
-                            variant="outline" 
-                            className="h-9 text-[9px] font-bold tracking-widest uppercase rounded-lg" 
-                            icon={Eye}
-                          >
-                            Open Preview
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {myRegs.length === 0 && (
-                    <div className="col-span-2 text-center py-20 bg-white border border-ignite-champagne rounded-3xl shadow-soft">
-                      <Award className="h-12 w-12 text-ignite-accent/20 mx-auto" />
-                      <p className="text-xs text-ignite-muted font-bold mt-2">No credentials issued</p>
+                      ))}
+                    </dl>
+                    <div className="flex items-center gap-2 border-t border-amrita-lineSoft bg-amrita-canvas px-5 py-3 text-[11.5px] text-amrita-muted">
+                      <ShieldCheck className="h-4 w-4 text-amrita-maroon" /> These details are locked. Contact a faculty coordinator to make changes.
                     </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {/* LEADERBOARD STANDINGS WORKSPACE */}
-            {activeTab === 'leaderboard' && (
-              <motion.div
-                key="leaderboard"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className="bg-white border border-ignite-champagne rounded-3xl overflow-hidden shadow-soft"
-              >
-                <div className="p-6 border-b border-ignite-champagne bg-ignite-secondary/50">
-                  <h2 className="font-display font-bold text-xs text-ignite-text uppercase tracking-widest">Leaderboard Standings</h2>
-                  <p className="text-xs text-ignite-muted mt-1">Accrued credit stands per checked-in student department.</p>
-                </div>
-
-                <div className="divide-y divide-ignite-champagne/50">
-                  {sortedLeaderboard.map((dep, index) => {
-                    const isMyDept = dep.dept.toLowerCase() === user.department?.toLowerCase() || (user.department?.toLowerCase().includes('computer') && dep.dept.toLowerCase() === 'cse');
-                    return (
-                      <div key={dep.dept} className={`flex items-center gap-5 px-6 py-4.5 transition-all ${isMyDept ? 'bg-ignite-champagne/15' : ''}`}>
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center font-black text-[10px] ${
-                          index === 0 ? 'bg-[#9E1B32] text-white shadow-sm' :
-                          index === 1 ? 'bg-[#E7E8EB] text-ignite-primary shadow-sm' :
-                          index === 2 ? 'bg-[#7C1327] text-white shadow-sm' :
-                          'bg-[#FAF9F6] text-ignite-muted border border-ignite-champagne'
-                        }`}>
-                          {index + 1}
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-ignite-text uppercase tracking-wider">{dep.dept} Department</span>
-                            {isMyDept && (
-                              <span className="text-[8px] font-black text-ignite-accent bg-white border border-ignite-accent/25 px-2.5 py-0.5 rounded uppercase tracking-wider">My Dept</span>
-                            )}
-                          </div>
-
-                          <div className="h-1.5 rounded-full bg-[#FAF9F6] overflow-hidden w-full max-w-xs mt-2 border border-ignite-champagne/30">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#7C1327] via-[#9E1B32] to-[#E7E8EB]"
-                              style={{ width: `${Math.round((dep.points / (sortedLeaderboard[0]?.points || 1)) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <span className="font-black text-xs text-ignite-accent">{dep.points}</span>
-                          <p className="text-[8px] text-ignite-muted uppercase tracking-wider">Credits</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-
+                  </Panel>
+                </>
+              )}
+            </motion.div>
           </AnimatePresence>
         </main>
-
       </div>
 
-      {/* Certificate modal */}
       <AnimatePresence>
-        {selectedCert && (
-          <CertificateModal 
-            registration={selectedCert.reg} 
-            event={selectedCert.ev} 
-            onClose={() => setSelectedCert(null)} 
-          />
-        )}
+        {cert && <CertificateModal registration={cert.r} event={cert.ev} onClose={() => setCert(null)} />}
       </AnimatePresence>
+    </div>
+  );
+}
 
-    </motion.div>
+function SectionHead({ title, sub }) {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight text-amrita-ink">{title}</h1>
+      {sub && <p className="mt-1 text-[13px] text-amrita-muted">{sub}</p>}
+    </div>
   );
 }

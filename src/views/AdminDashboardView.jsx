@@ -1,286 +1,211 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
-import Button from '../components/Button';
 import Input from '../components/Input';
+import { StatCard, Panel, Badge, EmptyState, NavItem } from '../components/ui';
 import {
-  Plus, Trash2, Edit3, Save, X, Users, Bell,
-  Calendar, CheckCircle, AlertCircle, Loader2, ScanLine, Trophy,
-  Shield, FileSpreadsheet
+  LayoutDashboard, CalendarDays, Users, ScanLine, Megaphone, Plus, Edit3, Trash2, Save, X,
+  FileSpreadsheet, CheckCircle2, XCircle, Search, ShieldCheck, LogOut, Loader2, AlertCircle,
+  ChevronRight, Trophy, Bell, ArrowRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CATEGORIES = ['Hackathon', 'Workshop', 'Technical', 'Sports', 'Cultural', 'Arts', 'Music', 'Startup', 'Seminar', 'Gaming'];
 const DEPARTMENTS = ['Computer Science', 'Electronics', 'Mechanical', 'Civil', 'Chemical', 'Management', 'Arts & Science'];
+const EMPTY = { title: '', category: 'Technical', department: 'Computer Science', date: '', time: '', venue: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '' };
 
-const EMPTY_EVENT = {
-  title: '', category: 'Technical', department: 'Computer Science',
-  date: '', time: '', venue: '', description: '', maxSeats: 100,
-  status: 'Open', prizes: '', rules: '', points: 50,
-  coordinators: [], schedule: [], gallery: [], mapsLink: ''
-};
+const selectCls = 'h-10 w-full rounded-xl border border-amrita-line bg-white px-3 text-[13px] font-medium text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10';
+const statusTone = { Open: 'success', 'Almost Full': 'warning', Closed: 'danger', Upcoming: 'maroon', Completed: 'neutral' };
 
-function SectionHeader({ title, sub }) {
-  return (
-    <div className="mb-8">
-      <h2 className="text-xl font-bold font-display text-ignite-text uppercase tracking-widest">{title}</h2>
-      {sub && <p className="text-xs text-ignite-muted mt-2 font-medium">{sub}</p>}
-    </div>
-  );
-}
-
+/* ── Event create/edit form ── */
 function EventForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = useState({ ...EMPTY_EVENT, ...initial });
+  const [form, setForm] = useState({ ...EMPTY, ...initial });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
-  const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
-
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.date || !form.venue) {
-      setError('Title, Date, and Venue are required.');
-      return;
-    }
+    if (!form.title || !form.date || !form.venue) return setError('Title, date and venue are required.');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 300));
     onSave(form);
     setLoading(false);
   };
 
   return (
-    <motion.form 
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      onSubmit={handleSubmit} 
-      className="bg-white border border-ignite-champagne rounded-3xl p-6 md:p-8 space-y-6 shadow-soft overflow-hidden mb-8"
-    >
-      <div className="grid md:grid-cols-2 gap-5">
+    <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} onSubmit={submit}
+      className="overflow-hidden rounded-2xl border border-amrita-line bg-white shadow-xs">
+      <div className="border-b border-amrita-lineSoft px-5 py-4">
+        <h3 className="text-[13px] font-bold text-amrita-ink">{initial?.id ? 'Edit event' : 'New event'}</h3>
+      </div>
+      <div className="grid gap-4 p-5 md:grid-cols-2">
+        <div className="md:col-span-2"><Input label="Event title" placeholder="e.g. CodeStorm Hackathon" value={form.title} onChange={(e) => set('title', e.target.value)} required /></div>
+        <Field label="Category"><select value={form.category} onChange={(e) => set('category', e.target.value)} className={selectCls}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></Field>
+        <Field label="Department"><select value={form.department} onChange={(e) => set('department', e.target.value)} className={selectCls}>{DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}</select></Field>
+        <Input label="Date" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
+        <Input label="Time" type="time" value={form.time} onChange={(e) => set('time', e.target.value)} />
+        <div className="md:col-span-2"><Input label="Venue" placeholder="e.g. Tech Arena Gate 1" value={form.venue} onChange={(e) => set('venue', e.target.value)} required /></div>
+        <div className="md:col-span-2"><Input label="Google Maps link" placeholder="Share URL" value={form.mapsLink} onChange={(e) => set('mapsLink', e.target.value)} /></div>
+        <Input label="Max seats" type="number" value={form.maxSeats} onChange={(e) => set('maxSeats', parseInt(e.target.value) || 1)} />
+        <Input label="Credits awarded" type="number" value={form.points} onChange={(e) => set('points', parseInt(e.target.value) || 0)} />
+        <Field label="Status"><select value={form.status} onChange={(e) => set('status', e.target.value)} className={selectCls}>{['Open', 'Almost Full', 'Upcoming', 'Closed', 'Completed'].map((s) => <option key={s}>{s}</option>)}</select></Field>
         <div className="md:col-span-2">
-          <Input label="Event Title" placeholder="e.g. Code Storm Hackathon" value={form.title} onChange={e => set('title', e.target.value)} required />
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-ignite-muted uppercase tracking-widest mb-2 font-sans">Category</label>
-          <select value={form.category} onChange={e => set('category', e.target.value)} className="w-full h-11 border border-ignite-champagne rounded-xl text-xs font-bold text-ignite-text px-3 bg-[#FAF9F6] focus:border-ignite-accent outline-none transition-all">
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-[10px] font-bold text-ignite-muted uppercase tracking-widest mb-2 font-sans">Department</label>
-          <select value={form.department} onChange={e => set('department', e.target.value)} className="w-full h-11 border border-ignite-champagne rounded-xl text-xs font-bold text-ignite-text px-3 bg-[#FAF9F6] focus:border-ignite-accent outline-none transition-all">
-            {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
-        <Input label="Date" type="date" value={form.date} onChange={e => set('date', e.target.value)} required />
-        <Input label="Time" type="time" value={form.time} onChange={e => set('time', e.target.value)} />
-        <div className="md:col-span-2">
-          <Input label="Venue" placeholder="e.g. Tech Arena Gate 1" value={form.venue} onChange={e => set('venue', e.target.value)} required />
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-amrita-muted">Description</label>
+          <textarea rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} className="w-full rounded-xl border border-amrita-line bg-white p-3 text-[13px] text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10" />
         </div>
         <div className="md:col-span-2">
-          <Input label="Google Maps Link" placeholder="Paste map iframe share link or URL" value={form.mapsLink} onChange={e => set('mapsLink', e.target.value)} />
-        </div>
-        <Input label="Max Seating Capacity" type="number" min="1" value={form.maxSeats} onChange={e => set('maxSeats', parseInt(e.target.value) || 1)} />
-        <Input label="Credits Awarded" type="number" min="0" value={form.points} onChange={e => set('points', parseInt(e.target.value) || 0)} />
-        
-        <div>
-          <label className="block text-[10px] font-bold text-ignite-muted uppercase tracking-widest mb-2 font-sans">Status</label>
-          <select value={form.status} onChange={e => set('status', e.target.value)} className="w-full h-11 border border-ignite-champagne rounded-xl text-xs font-bold text-ignite-text px-3 bg-[#FAF9F6] focus:border-ignite-accent outline-none transition-all">
-            {['Open', 'Almost Full', 'Upcoming', 'Closed', 'Completed'].map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-
-        <div className="md:col-span-2">
-          <label className="block text-[11px] font-bold text-ignite-muted uppercase tracking-wider mb-2">Description</label>
-          <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={3} placeholder="Provide details..." className="w-full border border-ignite-champagne rounded-xl text-xs font-medium text-ignite-text p-4 bg-[#FAF9F6] focus:border-ignite-accent outline-none resize-none transition-all" />
-        </div>
-        <div className="md:col-span-2">
-          <Input label="Prizes & Rewards" placeholder="1st Place: Certificate..." value={form.prizes} onChange={e => set('prizes', e.target.value)} />
-        </div>
-        <div className="md:col-span-2">
-          <label className="block text-[11px] font-bold text-ignite-muted uppercase tracking-wider mb-2">Rules (one per line)</label>
-          <textarea value={form.rules} onChange={e => set('rules', e.target.value)} rows={3} placeholder="Rule 1&#10;Rule 2" className="w-full border border-ignite-champagne rounded-xl text-xs font-medium text-ignite-text p-4 bg-[#FAF9F6] focus:border-ignite-accent outline-none resize-none transition-all" />
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-amrita-muted">Rules (one per line)</label>
+          <textarea rows={3} value={form.rules} onChange={(e) => set('rules', e.target.value)} className="w-full rounded-xl border border-amrita-line bg-white p-3 text-[13px] text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10" />
         </div>
       </div>
-
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-center gap-2.5">
-          <AlertCircle className="h-4.5 w-4.5 text-red-500 shrink-0" />
-          <p className="text-xs text-red-600 font-semibold">{error}</p>
-        </div>
-      )}
-
-      <div className="flex gap-3 pt-2">
-        <Button type="submit" variant="accent" className="h-11 text-[10px] font-bold uppercase tracking-widest rounded-xl" icon={loading ? Loader2 : Save} disabled={loading}>
-          {loading ? 'Saving...' : initial?.id ? 'Update Event' : 'Create Event'}
-        </Button>
-        <button 
-          type="button" 
-          onClick={onCancel} 
-          className="h-11 px-6 rounded-xl border border-ignite-champagne hover:bg-ignite-secondary text-ignite-primary font-bold uppercase tracking-widest text-[10px] transition-all flex items-center gap-2"
-        >
-          <X className="h-4 w-4" />
-          Cancel
+      {error && <div className="mx-5 mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[12px] font-semibold text-red-700"><AlertCircle className="h-4 w-4 shrink-0" />{error}</div>}
+      <div className="flex gap-2.5 border-t border-amrita-lineSoft px-5 py-4">
+        <button type="submit" disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-5 py-2.5 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark disabled:opacity-60">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {initial?.id ? 'Update event' : 'Create event'}
         </button>
+        <button type="button" onClick={onCancel} className="inline-flex items-center gap-2 rounded-xl border border-amrita-line px-5 py-2.5 text-[12px] font-semibold text-amrita-slate hover:bg-amrita-panel"><X className="h-4 w-4" /> Cancel</button>
       </div>
     </motion.form>
   );
 }
+function Field({ label, children }) {
+  return <label className="block"><span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-amrita-muted">{label}</span>{children}</label>;
+}
 
-function ScannerTerminal() {
+/* ── Verification (clean panel replacing the fake terminal) ── */
+function Verification() {
   const { registrations, markAttendance, events } = useData();
-  const [ticketId, setTicketId] = useState('');
+  const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const checkedToday = registrations.filter((r) => r.attended || r.attendance === 'present');
 
-  const handleScan = async (e) => {
+  const verify = async (e) => {
     e.preventDefault();
-    if (!ticketId.trim()) return;
+    if (!code.trim()) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    
-    const reg = registrations.find(r => r.ticketId === ticketId.trim().toUpperCase());
-    if (!reg) {
-      setResult({ ok: false, message: 'Invalid Pass: Ticket ID not found in database.' });
-    } else if (reg.attended || reg.attendance === 'present') {
-      const ev = events.find(e => e.id === reg.eventId);
-      setResult({ ok: false, message: `Access Blocked: ${reg.studentName} is already checked in for ${ev?.title || 'Event'}.` });
-    } else {
-      markAttendance(reg.id);
-      const ev = events.find(e => e.id === reg.eventId);
-      setResult({ ok: true, message: `Access Granted: Verified ${reg.studentName} entry for ${ev?.title || 'Event'}.` });
-    }
-    
+    await new Promise((r) => setTimeout(r, 400));
+    const reg = registrations.find((r) => r.ticketId === code.trim().toUpperCase());
+    const ev = reg && events.find((e) => e.id === reg.eventId);
+    if (!reg) setResult({ state: 'invalid', msg: 'No pass matches this ID.' });
+    else if (reg.attended || reg.attendance === 'present') setResult({ state: 'duplicate', reg, ev, msg: 'Already checked in.' });
+    else { markAttendance(reg.id); setResult({ state: 'valid', reg, ev, msg: 'Attendance recorded · credits awarded.' }); }
     setLoading(false);
-    setTicketId('');
+    setCode('');
   };
 
+  const tone = { valid: 'success', duplicate: 'warning', invalid: 'danger' };
+  const ResIcon = result?.state === 'valid' ? CheckCircle2 : result?.state === 'duplicate' ? AlertCircle : XCircle;
+
   return (
-    <div className="space-y-8">
-      <SectionHeader title="Verification Terminal" sub="Scan and check-in campus event pass codes." />
-      
-      <div className="bg-[#121212] rounded-3xl p-6 md:p-8 font-mono text-xs text-[#9E1B32] border-2 border-ignite-champagne/40 shadow-glow relative overflow-hidden min-h-[260px] flex flex-col justify-between">
-        {/* Laser line scanner animation */}
-        <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-[#9E1B32] to-transparent animate-scan-line z-10" />
-        
-        <div className="flex justify-between items-start border-b border-white/5 pb-4 mb-4">
-          <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">IGNITE Operations Console</div>
-          <span className="text-[8px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-widest animate-pulse">
-            Terminal Active
-          </span>
-        </div>
+    <div className="space-y-6">
+      <SectionHead title="Attendance verification" sub="Enter a student's pass ID to verify entry and award credits" />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Verify a pass" subtitle="Webcam QR scanning is coming next">
+          <form onSubmit={verify} className="space-y-4 p-5">
+            <div className="relative">
+              <ScanLine className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amrita-muted" />
+              <input value={code} onChange={(e) => setCode(e.target.value)} autoFocus placeholder="Scan or type pass ID (TKT-…)"
+                className="h-11 w-full rounded-xl border border-amrita-line bg-white pl-10 pr-3 font-mono text-[13px] text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10" />
+            </div>
+            <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amrita-maroon py-3 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark disabled:opacity-60">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Verify pass
+            </button>
 
-        <div className="space-y-2 mb-8">
-          <p className="text-[#7C1327]/40 text-[9px]"># INITIALIZING AMRITA OPERATIONS SECURE GATEWAY...</p>
-          <p className="text-[#7C1327]/60 text-[9px]"># READY FOR PASSING CREDENTIAL INPUT. WAITING FOR QR SCAN...</p>
-        </div>
-
-        <form onSubmit={handleScan} className="flex items-center gap-3 relative z-10 border-b border-[#9E1B32]/20 pb-2.5">
-          <span className="text-ignite-accent font-black animate-pulse text-base">{'>'}</span>
-          <input
-            value={ticketId}
-            onChange={e => setTicketId(e.target.value)}
-            placeholder="Place cursor here & scan pass code..."
-            className="flex-1 bg-transparent border-none outline-none text-[#9E1B32] placeholder-slate-700 text-xs font-mono font-bold"
-            autoFocus
-            id="scanner-input"
-            autoComplete="off"
-          />
-          <button type="submit" className="text-white border border-[#9E1B32]/30 bg-[#9E1B32]/15 rounded-lg px-4 py-1.5 text-[9px] font-bold uppercase hover:bg-[#9E1B32]/25 transition-all">[ENTER]</button>
-        </form>
-
-        <div className="min-h-[40px] pt-4">
-          {loading && <p className="text-amber-500 animate-pulse font-bold">Verifying database records...</p>}
-          {result && (
-            <p className={`font-bold text-xs ${result.ok ? 'text-emerald-400' : 'text-red-400'}`}>
-              {result.message}
-            </p>
-          )}
-        </div>
-
-        <div className="text-[9px] text-slate-500 mt-6 border-t border-white/5 pt-4">Scanned passes today: {registrations.filter(r => r.attended || r.attendance === 'present').length} successful check-ins</div>
-      </div>
-
-      {/* Recents list */}
-      <div className="bg-white border border-ignite-champagne rounded-3xl overflow-hidden shadow-soft">
-        <div className="px-6 py-4.5 border-b border-ignite-champagne bg-ignite-secondary/40">
-          <p className="text-[10px] font-bold text-ignite-text uppercase tracking-widest">Attendance Activity Registry</p>
-        </div>
-        <div className="divide-y divide-ignite-champagne/40 max-h-64 overflow-y-auto">
-          {registrations.filter(r => r.attended || r.attendance === 'present').length === 0 ? (
-            <p className="text-center py-10 text-xs text-ignite-muted font-bold">No access checks logged today</p>
-          ) : (
-            registrations.filter(r => r.attended || r.attendance === 'present').map(r => {
-              const ev = events.find(e => e.id === r.eventId);
-              return (
-                <div key={r.id} className="px-6 py-4 flex items-center justify-between text-xs transition-colors hover:bg-[#FAF9F6]/50">
-                  <div className="flex items-center gap-3.5">
-                    <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
-                    <div>
-                      <p className="font-bold text-ignite-text uppercase tracking-wider">{r.name || r.studentName}</p>
-                      <p className="text-[10px] text-ignite-muted font-mono mt-0.5">{r.ticketId} · {ev?.title}</p>
-                    </div>
-                  </div>
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-0.5 rounded-full uppercase tracking-wider">Checked</span>
+            {result && (
+              <div className={`rounded-xl border p-4 ${result.state === 'valid' ? 'border-emerald-200 bg-emerald-50' : result.state === 'duplicate' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'}`}>
+                <div className="flex items-center gap-2">
+                  <ResIcon className={`h-5 w-5 ${result.state === 'valid' ? 'text-emerald-600' : result.state === 'duplicate' ? 'text-amber-600' : 'text-red-600'}`} />
+                  <p className={`text-[13px] font-bold ${result.state === 'valid' ? 'text-emerald-800' : result.state === 'duplicate' ? 'text-amber-800' : 'text-red-800'}`}>
+                    {result.state === 'valid' ? 'Access granted' : result.state === 'duplicate' ? 'Already scanned' : 'Rejected'}
+                  </p>
                 </div>
-              );
-            })
+                {result.reg && (
+                  <div className="mt-3 border-t border-black/5 pt-3 text-[12px] text-amrita-slate">
+                    <p className="font-semibold text-amrita-ink">{result.reg.studentName || result.reg.name}</p>
+                    <p className="font-mono text-[11px]">{result.reg.registerNum} · {result.ev?.title}</p>
+                  </div>
+                )}
+                <p className="mt-2 text-[11.5px] text-amrita-muted">{result.msg}</p>
+              </div>
+            )}
+          </form>
+        </Panel>
+
+        <Panel title="Checked in today" subtitle={`${checkedToday.length} verified`}>
+          {checkedToday.length === 0 ? (
+            <EmptyState icon={ScanLine} title="No check-ins yet" hint="Verified passes will appear here." />
+          ) : (
+            <ul className="max-h-[420px] divide-y divide-amrita-lineSoft overflow-y-auto">
+              {checkedToday.map((r) => {
+                const ev = events.find((e) => e.id === r.eventId);
+                return (
+                  <li key={r.id} className="flex items-center gap-3 px-5 py-3.5">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600"><CheckCircle2 className="h-4 w-4" /></span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold text-amrita-ink">{r.name || r.studentName}</p>
+                      <p className="truncate font-mono text-[11px] text-amrita-muted">{r.ticketId} · {ev?.title}</p>
+                    </div>
+                    <Badge tone="success">Present</Badge>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </div>
+        </Panel>
       </div>
     </div>
   );
 }
 
-function AnnouncementManager() {
+/* ── Announcements ── */
+function Announcements() {
   const { announcements, addAnnouncement, deleteAnnouncement } = useData();
   const [form, setForm] = useState({ title: '', content: '' });
   const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.title || !form.content) return;
     setSaving(true);
-    await new Promise(r => setTimeout(r, 400));
-    addAnnouncement({
-      ...form,
-      date: new Date().toLocaleDateString('en-IN'),
-      time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    });
+    await new Promise((r) => setTimeout(r, 300));
+    addAnnouncement({ ...form, date: new Date().toLocaleDateString('en-IN'), time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) });
     setForm({ title: '', content: '' });
     setSaving(false);
   };
-
   return (
     <div className="space-y-6">
-      <SectionHeader title="Notice Publisher" sub="Post verified updates to the student tickers." />
-      <form onSubmit={handleSubmit} className="bg-white border border-ignite-champagne rounded-3xl p-6 space-y-5 shadow-soft">
-        <Input label="Notice Title" placeholder="e.g. Schedule Timing Adjustments" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required />
-        <div>
-          <label className="block text-[11px] font-bold text-ignite-muted uppercase tracking-wider mb-2">Notice details</label>
-          <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} rows={3} placeholder="Compose update..." required className="w-full border border-ignite-champagne rounded-xl text-xs font-medium text-ignite-text p-4 bg-[#FAF9F6] focus:border-ignite-accent outline-none resize-none transition-all" />
-        </div>
-        <Button type="submit" variant="accent" className="h-11 text-[10px] font-bold uppercase tracking-widest rounded-xl" icon={saving ? Loader2 : Bell} disabled={saving}>
-          {saving ? 'Publishing Notice...' : 'Publish Update'}
-        </Button>
-      </form>
-
-      <div className="space-y-4">
-        {announcements.map(a => (
-          <div key={a.id} className="bg-white border border-ignite-champagne rounded-2xl p-5 flex items-start justify-between gap-4 shadow-soft">
-            <div className="flex gap-3">
-              <Bell className="h-5 w-5 text-ignite-accent shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-xs font-bold text-ignite-text uppercase tracking-wider">{a.title}</h4>
-                <p className="text-[11px] text-ignite-muted mt-2 leading-relaxed font-semibold">{a.content}</p>
-                <p className="text-[9px] font-mono text-ignite-muted mt-2.5 font-bold">{a.date} · {a.time}</p>
-              </div>
-            </div>
-            <button onClick={() => deleteAnnouncement(a.id)} className="h-8 w-8 border border-red-200 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50 transition-all shrink-0">
-              <Trash2 className="h-4.5 w-4.5" />
-            </button>
+      <SectionHead title="Announcements" sub="Publish notices to every student dashboard" />
+      <Panel title="Publish a notice">
+        <form onSubmit={submit} className="space-y-4 p-5">
+          <Input label="Title" placeholder="e.g. Schedule update" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+          <div>
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-amrita-muted">Details</label>
+            <textarea rows={3} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} required className="w-full rounded-xl border border-amrita-line bg-white p-3 text-[13px] text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10" />
           </div>
-        ))}
-      </div>
+          <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-5 py-2.5 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark disabled:opacity-60">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />} Publish
+          </button>
+        </form>
+      </Panel>
+      {announcements.length === 0 ? (
+        <Panel><EmptyState icon={Bell} title="No notices published" /></Panel>
+      ) : (
+        <div className="space-y-3">
+          {announcements.map((a) => (
+            <div key={a.id} className="flex items-start justify-between gap-4 rounded-2xl border border-amrita-line bg-white p-5 shadow-xs">
+              <div className="flex gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amrita-maroonSoft text-amrita-maroon"><Bell className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-[13px] font-bold text-amrita-ink">{a.title}</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-amrita-slate">{a.content}</p>
+                  <p className="mt-2 font-mono text-[10.5px] text-amrita-faint">{a.date} · {a.time}</p>
+                </div>
+              </div>
+              <button onClick={() => deleteAnnouncement(a.id)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-amrita-line text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -290,335 +215,215 @@ export default function AdminDashboardView({ setView }) {
   const [tab, setTab] = useState('overview');
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [q, setQ] = useState('');
 
   if (!user || user.role !== 'admin') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FAF9F6]">
-        <div className="h-16 w-16 bg-white border border-ignite-champagne rounded-full flex items-center justify-center mb-4 shadow-soft">
-          <Shield className="h-8 w-8 text-ignite-accent/45" />
+      <div className="grid min-h-[70vh] place-items-center bg-amrita-canvas px-5">
+        <div className="text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-amrita-maroonSoft text-amrita-maroon"><ShieldCheck className="h-6 w-6" /></span>
+          <h2 className="mt-4 text-xl font-bold text-amrita-ink">Faculty access required</h2>
+          <button onClick={() => setView('signin')} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-amrita-maroonDark">Sign in <ArrowRight className="h-4 w-4" /></button>
         </div>
-        <h2 className="text-2xl font-bold font-display text-ignite-text">Administrative Access Required</h2>
-        <Button onClick={() => setView('signin')} variant="accent" className="mt-4">Login</Button>
       </div>
     );
   }
 
-  const totalRegs = registrations.length;
-  const totalAttended = registrations.filter(r => r.attended || r.attendance === 'present').length;
-  const openEvents = events.filter(e => e.status === 'Open').length;
-  const sortedLB = [...leaderboard].sort((a, b) => b.points - a.points);
+  const totalAttended = registrations.filter((r) => r.attended || r.attendance === 'present').length;
+  const openEvents = events.filter((e) => e.status === 'Open').length;
+  const board = [...leaderboard].sort((a, b) => b.points - a.points);
+  const filteredRegs = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return registrations;
+    return registrations.filter((r) => [r.studentName, r.registerNum, r.eventTitle, r.email].some((x) => String(x || '').toLowerCase().includes(s)));
+  }, [registrations, q]);
 
-  const handleSaveEvent = (formData) => {
-    if (editTarget) {
-      updateEvent(editTarget.id, formData);
-    } else {
-      addEvent(formData);
-    }
-    setShowForm(false);
-    setEditTarget(null);
+  const saveEvent = (data) => { editTarget ? updateEvent(editTarget.id, data) : addEvent(data); setShowForm(false); setEditTarget(null); };
+  const startEdit = (ev) => { setEditTarget(ev); setShowForm(true); setTab('events'); };
+
+  const exportCSV = () => {
+    const headers = ['Student', 'Register No', 'Department', 'Year', 'Email', 'Phone', 'Event', 'Registered', 'Attendance'];
+    const rows = registrations.map((r) => [r.studentName, r.registerNum, r.department, r.year, r.email, r.phone, r.eventTitle, r.registrationDate, (r.attended || r.attendance === 'present') ? 'Present' : 'Absent']);
+    const csv = 'data:text/csv;charset=utf-8,' + [headers, ...rows].map((row) => row.map((v) => `"${v ?? ''}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = encodeURI(csv);
+    a.download = `ignite2026_registrations.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
   };
 
-  const handleEdit = (ev) => {
-    setEditTarget(ev);
-    setShowForm(true);
-    setTab('events');
-  };
-
-  const handleDelete = (id) => {
-    deleteEvent(id);
-    setDeleteConfirm(null);
-  };
-
-  const handleExportCSV = () => {
-    const headers = ['Student Name', 'Register Number', 'Department', 'Year', 'Email', 'Phone', 'Event', 'Registration Date', 'Attendance Status'];
-    const rows = registrations.map(r => [
-      r.studentName,
-      r.registerNum,
-      r.department,
-      r.year,
-      r.email,
-      r.phone,
-      r.eventTitle,
-      r.registrationDate,
-      r.attended || r.attendance === 'present' ? 'Present' : 'Absent'
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(','), ...rows.map(e => e.map(val => `"${val}"`).join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ignite2026_registrations_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const TABS = [
-    { id: 'overview', label: 'Dashboard' },
-    { id: 'events', label: 'Events CRUD' },
-    { id: 'registrations', label: 'Registries' },
-    { id: 'scanner', label: 'Verification Gate' },
-    { id: 'announcements', label: 'Notices' },
+  const nav = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'events', label: 'Events', icon: CalendarDays, badge: events.length },
+    { id: 'registrations', label: 'Registrations', icon: Users, badge: registrations.length || undefined },
+    { id: 'verify', label: 'Verification', icon: ScanLine },
+    { id: 'announcements', label: 'Announcements', icon: Megaphone },
   ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="min-h-screen bg-[#FAF9F6] relative overflow-hidden"
-    >
-      {/* Background blobs */}
-      <div className="bg-blob bg-blob-gold top-1/4 right-0 w-[450px] h-[450px]" />
-      <div className="bg-blob bg-blob-champagne bottom-1/4 left-0 w-[450px] h-[450px]" />
-
-      {/* Top Banner Nav */}
-      <section className="bg-crimson-night text-white py-6 border-b border-ignite-accent/15 shadow-crimsonLift relative z-10 overflow-hidden">
-        <img src="/amrita-emblem.svg" alt="" aria-hidden className="absolute -right-10 -top-14 w-56 h-56 opacity-[0.06] pointer-events-none" style={{ filter: 'brightness(0) invert(1)' }} />
-        <div className="mx-auto max-w-7xl px-5 lg:px-8 flex items-center justify-between flex-wrap gap-4 relative">
-          <div className="flex items-center gap-3.5">
-            <div className="h-12 w-12 rounded-xl bg-white/10 flex items-center justify-center border border-white/15 shadow-glowCrimson p-2">
-              <img src="/amrita-emblem.svg" alt="Amrita" className="h-full w-full object-contain" style={{ filter: 'brightness(0) invert(1)' }} draggable={false} />
-            </div>
-            <div>
-              <p className="text-[8px] font-bold uppercase tracking-widest text-white/60 font-sans">Amrita Vishwa Vidyapeetham · Command Center</p>
-              <h1 className="text-sm font-bold text-white leading-tight uppercase font-display tracking-widest mt-0.5">IGNITE Operations</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-400 font-bold tracking-wider uppercase">{user.name}</span>
-            <button 
-              onClick={() => { logout(); setView('home'); }} 
-              className="h-9.5 px-4.5 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl text-[9px] uppercase font-bold tracking-widest transition-all"
-            >
-              Exit Center
-            </button>
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-7xl px-5 lg:px-8 mt-6 flex gap-6 overflow-x-auto border-t border-white/5 pt-5 scrollbar-thin">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { setTab(t.id); setShowForm(false); setEditTarget(null); }}
-              className={`text-[9px] font-bold uppercase tracking-widest py-2 px-1 border-b-2 transition-all shrink-0 ${
-                tab === t.id ? 'border-white text-white font-black' : 'border-transparent text-white/50 hover:text-white/80'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Main Container */}
-      <div className="mx-auto max-w-7xl px-5 lg:px-8 py-12 relative z-10">
-        
-        {/* OVERVIEW TAB */}
-        {tab === 'overview' && (
-          <div className="space-y-8">
-            <SectionHeader title="Operations Overview" sub="Live credentials registry statistics." />
-            
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { icon: Calendar, label: 'Total Events', value: events.length, text: 'text-ignite-accent', bg: 'bg-[#9E1B32]/5' },
-                { icon: Users, label: 'Registrations', value: totalRegs, text: 'text-ignite-primary', bg: 'bg-[#1E1E1E]/5' },
-                { icon: CheckCircle, label: 'Checked In', value: totalAttended, text: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { icon: Calendar, label: 'Open Registers', value: openEvents, text: 'text-[#7C1327]', bg: 'bg-[#7C1327]/5' },
-              ].map(({ icon: Icon, label, value, text, bg }) => (
-                <div key={label} className="bg-white border border-ignite-champagne rounded-2xl p-5 shadow-soft hover-lift-sm transition-all duration-300">
-                  <div className={`h-9 w-9 rounded-xl ${bg} border border-ignite-champagne/40 flex items-center justify-center mb-4 text-ignite-accent shrink-0`}>
-                    <Icon className={`h-5 w-5 ${text}`} />
-                  </div>
-                  <p className="text-2xl font-black text-ignite-text leading-tight">{value}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-ignite-muted mt-1.5">{label}</p>
+    <div className="min-h-screen bg-amrita-canvas">
+      <div className="mx-auto grid max-w-7xl gap-6 px-5 py-8 lg:grid-cols-12 lg:px-8">
+        {/* Sidebar */}
+        <aside className="lg:col-span-3">
+          <div className="lg:sticky lg:top-24 space-y-4">
+            <div className="relative overflow-hidden rounded-2xl bg-crimson-night p-5 text-white shadow-xs">
+              <img src="/amrita-emblem.svg" alt="" aria-hidden className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 opacity-[0.08]" style={{ filter: 'brightness(0) invert(1)' }} />
+              <div className="relative flex items-center gap-2.5">
+                <img src="/amrita-emblem.svg" alt="" className="h-8 w-8" style={{ filter: 'brightness(0) invert(1)' }} />
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/55">Operations Console</p>
+                  <p className="text-[13px] font-bold">IGNITE 2026</p>
                 </div>
-              ))}
-            </div>
-
-            {/* Actions Quick grid */}
-            <div className="grid md:grid-cols-3 gap-5">
-              <button 
-                onClick={() => { setTab('events'); setShowForm(true); }} 
-                className="border border-dashed border-ignite-champagne bg-white rounded-3xl p-6.5 text-center hover:border-ignite-accent/80 hover:bg-[#FAF9F6] hover:shadow-soft transition-all group duration-300"
-              >
-                <Plus className="h-6.5 w-6.5 text-ignite-muted group-hover:text-ignite-accent mx-auto mb-2 transition-colors" />
-                <p className="text-[10px] font-bold text-ignite-text uppercase tracking-widest">Create New Event</p>
-                <p className="text-[9px] text-ignite-muted mt-1.5 leading-normal font-semibold">Publish new program details to directory</p>
-              </button>
-              
-              <button 
-                onClick={() => setTab('scanner')} 
-                className="border border-ignite-champagne rounded-3xl p-6.5 text-center hover:border-ignite-accent/80 bg-white hover:shadow-soft transition-all duration-300"
-              >
-                <ScanLine className="h-6.5 w-6.5 text-ignite-accent mx-auto mb-2" />
-                <p className="text-[10px] font-bold text-ignite-text uppercase tracking-widest">Access Scan Gate</p>
-                <p className="text-[9px] text-ignite-muted mt-1.5 leading-normal font-semibold">Verify student entrance pass QR codes</p>
-              </button>
-              
-              <button 
-                onClick={() => setTab('announcements')} 
-                className="border border-ignite-champagne rounded-3xl p-6.5 text-center hover:border-ignite-accent/80 bg-white hover:shadow-soft transition-all duration-300"
-              >
-                <Bell className="h-6.5 w-6.5 text-ignite-accent mx-auto mb-2" />
-                <p className="text-[10px] font-bold text-ignite-text uppercase tracking-widest">Broadcast Notice</p>
-                <p className="text-[9px] text-ignite-muted mt-1.5 leading-normal font-semibold">Post news updates directly to student dashboards</p>
-              </button>
-            </div>
-
-            {/* Department standings summary */}
-            <div className="bg-white border border-ignite-champagne rounded-3xl overflow-hidden shadow-soft">
-              <div className="px-6 py-4.5 border-b border-ignite-champagne bg-[#FAF9F6]/60 flex justify-between items-center">
-                <h3 className="font-display font-bold text-xs text-ignite-text uppercase tracking-widest">Standings Leaderboard</h3>
-                <Trophy className="h-4.5 w-4.5 text-ignite-accent" />
               </div>
-              <div className="divide-y divide-ignite-champagne/40">
-                {sortedLB.slice(0, 5).map((dep, idx) => (
-                  <div key={dep.dept} className="px-6 py-4 flex items-center justify-between text-xs font-semibold hover:bg-[#FAF9F6]/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <span className="font-black text-ignite-muted w-5">#{idx + 1}</span>
-                      <span className="text-ignite-text uppercase tracking-wider">{dep.dept} department</span>
-                    </div>
-                    <span className="font-black text-ignite-accent">{dep.points} pts</span>
-                  </div>
-                ))}
-              </div>
+              <p className="relative mt-4 text-[11.5px] text-white/70">{user.name}</p>
             </div>
 
+            <nav className="rounded-2xl border border-amrita-line bg-white p-2 shadow-xs">
+              {nav.map((n) => <NavItem key={n.id} {...n} active={tab === n.id} onClick={() => { setTab(n.id); setShowForm(false); setEditTarget(null); }} />)}
+            </nav>
+
+            <button onClick={() => { logout(); setView('home'); }} className="flex w-full items-center justify-center gap-2 rounded-xl border border-amrita-line bg-white py-2.5 text-[12.5px] font-semibold text-red-600 hover:bg-red-50">
+              <LogOut className="h-4 w-4" /> Exit console
+            </button>
           </div>
-        )}
+        </aside>
 
-        {/* EVENTS CRUD TAB */}
-        {tab === 'events' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <SectionHeader title="Catalogue Manager" sub={`${events.length} programs registered`} />
-              {!showForm && (
-                <Button onClick={() => { setEditTarget(null); setShowForm(true); }} variant="accent" icon={Plus} className="h-11 text-[9px] font-bold uppercase tracking-widest rounded-xl">
-                  Add Event
-                </Button>
-              )}
-            </div>
+        {/* Main */}
+        <main className="lg:col-span-9">
+          <AnimatePresence mode="wait">
+            <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="space-y-6">
 
-            <AnimatePresence>
-              {showForm && (
-                <EventForm
-                  initial={editTarget || {}}
-                  onSave={handleSaveEvent}
-                  onCancel={() => { setShowForm(false); setEditTarget(null); }}
-                />
-              )}
-            </AnimatePresence>
-
-            <div className="space-y-4">
-              {events.map(ev => (
-                <div key={ev.id} className="bg-white border border-ignite-champagne rounded-2xl px-6 py-5 flex items-center justify-between gap-4 shadow-soft hover:border-ignite-accent/30 transition-all duration-300">
-                  <div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h4 className="font-bold text-sm text-ignite-text leading-snug">{ev.title}</h4>
-                      <span className={`text-[8px] font-bold px-2.5 py-0.5 rounded uppercase tracking-wider ${
-                        ev.status === 'Open' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                        ev.status === 'Closed' ? 'bg-red-50 text-red-600 border-red-100' :
-                        'bg-[#FAF9F6] text-ignite-muted border border-ignite-champagne'
-                      }`}>{ev.status}</span>
-                    </div>
-                    <p className="text-[10px] text-ignite-muted font-bold font-mono mt-1.5">{ev.date} · {ev.venue} · {ev.category} · {ev.seatsFilled}/{ev.maxSeats} slots filled</p>
+              {tab === 'overview' && (
+                <>
+                  <SectionHead title="Operations overview" sub="Live registry across all IGNITE 2026 events" />
+                  <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <StatCard icon={CalendarDays} label="Total events" value={events.length} />
+                    <StatCard icon={Users} label="Registrations" value={registrations.length} />
+                    <StatCard icon={CheckCircle2} label="Checked in" value={totalAttended} />
+                    <StatCard icon={CalendarDays} label="Open events" value={openEvents} />
                   </div>
-                  
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={() => handleEdit(ev)}
-                      className="h-9 w-9 border border-ignite-champagne rounded-xl flex items-center justify-center text-ignite-muted hover:text-ignite-accent hover:border-ignite-accent/40 transition-all bg-[#FAF9F6] shadow-sm"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </button>
-                    {deleteConfirm === ev.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => handleDelete(ev.id)} className="h-8 px-3 bg-red-650 text-white rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-red-700">Confirm</button>
-                        <button onClick={() => setDeleteConfirm(null)} className="h-8 px-3 bg-slate-100 text-ignite-muted rounded-lg text-[9px] font-bold uppercase tracking-widest hover:bg-slate-200">Exit</button>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <QuickAction icon={Plus} title="Create event" hint="Publish a new program" onClick={() => { setEditTarget(null); setShowForm(true); setTab('events'); }} />
+                    <QuickAction icon={ScanLine} title="Verify entry" hint="Scan attendance passes" onClick={() => setTab('verify')} />
+                    <QuickAction icon={Megaphone} title="Broadcast" hint="Publish a notice" onClick={() => setTab('announcements')} />
+                  </div>
+
+                  <Panel title="Department standings" action={<Trophy className="h-4 w-4 text-amrita-maroon" />} bodyClass="divide-y divide-amrita-lineSoft">
+                    {board.slice(0, 5).map((d, i) => (
+                      <div key={d.dept} className="flex items-center gap-4 px-5 py-3.5">
+                        <span className="w-6 text-[13px] font-bold text-amrita-muted">#{i + 1}</span>
+                        <p className="flex-1 text-[13px] font-semibold text-amrita-ink">{d.dept}</p>
+                        <span className="text-[13px] font-bold text-amrita-maroon">{d.points.toLocaleString('en-IN')} <span className="text-[11px] font-medium text-amrita-muted">pts</span></span>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => setDeleteConfirm(ev.id)}
-                        className="h-9 w-9 border border-red-200 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50 transition-all bg-[#FAF9F6] shadow-sm"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
+                    ))}
+                  </Panel>
+                </>
+              )}
+
+              {tab === 'events' && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <SectionHead title="Events" sub={`${events.length} programs`} />
+                    {!showForm && <button onClick={() => { setEditTarget(null); setShowForm(true); }} className="inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark"><Plus className="h-4 w-4" /> Add event</button>}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                  <AnimatePresence>{showForm && <EventForm initial={editTarget || {}} onSave={saveEvent} onCancel={() => { setShowForm(false); setEditTarget(null); }} />}</AnimatePresence>
+                  <div className="space-y-3">
+                    {events.map((ev) => (
+                      <div key={ev.id} className="flex items-center justify-between gap-4 rounded-2xl border border-amrita-line bg-white px-5 py-4 shadow-xs">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[14px] font-bold text-amrita-ink">{ev.title}</p>
+                            <Badge tone={statusTone[ev.status] || 'neutral'}>{ev.status}</Badge>
+                          </div>
+                          <p className="mt-1 font-mono text-[11px] text-amrita-muted">{ev.date} · {ev.venue} · {ev.category} · {ev.seatsFilled}/{ev.maxSeats} filled</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button onClick={() => startEdit(ev)} className="grid h-9 w-9 place-items-center rounded-lg border border-amrita-line text-amrita-slate hover:border-amrita-maroon hover:text-amrita-maroon"><Edit3 className="h-4 w-4" /></button>
+                          {confirmDel === ev.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <button onClick={() => { deleteEvent(ev.id); setConfirmDel(null); }} className="rounded-lg bg-red-600 px-3 py-2 text-[11px] font-semibold text-white hover:bg-red-700">Delete</button>
+                              <button onClick={() => setConfirmDel(null)} className="rounded-lg bg-amrita-panel px-3 py-2 text-[11px] font-semibold text-amrita-slate">Keep</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmDel(ev.id)} className="grid h-9 w-9 place-items-center rounded-lg border border-amrita-line text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
-        {/* REGISTRATIONS REGISTRY TAB */}
-        {tab === 'registrations' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <SectionHeader title="Registries Database" sub={`${totalRegs} credentials secured.`} />
-              <button 
-                onClick={handleExportCSV} 
-                className="h-10 px-5 border border-ignite-champagne hover:bg-ignite-secondary text-ignite-primary rounded-xl text-[9px] uppercase font-bold tracking-widest transition-all flex items-center gap-2"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                Export CSV
-              </button>
-            </div>
-
-            <div className="bg-white border border-ignite-champagne rounded-3xl overflow-hidden shadow-soft">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#FAF9F6]/80 border-b border-ignite-champagne text-[9px] font-black uppercase text-ignite-muted tracking-widest">
-                      <th className="px-6 py-4.5">Student Name</th>
-                      <th className="px-6 py-4.5">Register Num</th>
-                      <th className="px-6 py-4.5">Dept / Year</th>
-                      <th className="px-6 py-4.5">Event Track</th>
-                      <th className="px-6 py-4.5">Pass Ticket ID</th>
-                      <th className="px-6 py-4.5 text-center">Attendance</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-ignite-champagne/40 font-semibold">
-                    {registrations.map(reg => {
-                      const isAttended = reg.attended || reg.attendance === 'present';
-                      return (
-                        <tr key={reg.id} className="hover:bg-[#FAF9F6]/40 transition-all">
-                          <td className="px-6 py-4 font-bold text-ignite-text uppercase tracking-wider">{reg.studentName}</td>
-                          <td className="px-6 py-4 font-mono font-bold">{reg.registerNum}</td>
-                          <td className="px-6 py-4">{reg.department} · Year {reg.year}</td>
-                          <td className="px-6 py-4">{reg.eventTitle}</td>
-                          <td className="px-6 py-4 font-mono text-slate-500 font-bold">{reg.ticketId}</td>
-                          <td className="px-6 py-4 text-center">
-                            {isAttended ? (
-                              <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded uppercase tracking-wider">Present</span>
-                            ) : (
-                              <span className="text-[8px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded uppercase tracking-wider">Absent</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {registrations.length === 0 && (
-                      <tr>
-                        <td colSpan="6" className="text-center py-12 text-xs text-ignite-muted font-bold">No student registrations logged in registries database.</td>
-                      </tr>
+              {tab === 'registrations' && (
+                <>
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <SectionHead title="Registrations" sub={`${registrations.length} total`} />
+                    <button onClick={exportCSV} className="inline-flex items-center gap-2 rounded-xl border border-amrita-line bg-white px-4 py-2.5 text-[12px] font-semibold text-amrita-ink hover:border-amrita-maroon hover:text-amrita-maroon"><FileSpreadsheet className="h-4 w-4" /> Export CSV</button>
+                  </div>
+                  <div className="relative max-w-sm">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amrita-muted" />
+                    <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students, events…" className="h-10 w-full rounded-xl border border-amrita-line bg-white pl-10 pr-3 text-[13px] text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10" />
+                  </div>
+                  <Panel bodyClass="overflow-x-auto">
+                    {filteredRegs.length === 0 ? (
+                      <EmptyState icon={Users} title="No registrations" hint={q ? 'No results for this search.' : 'Student registrations will appear here.'} />
+                    ) : (
+                      <table className="w-full text-left text-[12.5px]">
+                        <thead>
+                          <tr className="border-b border-amrita-lineSoft text-[10.5px] font-semibold uppercase tracking-wide text-amrita-muted">
+                            <th className="px-5 py-3">Student</th><th className="px-5 py-3">Register No</th><th className="px-5 py-3">Dept / Year</th><th className="px-5 py-3">Event</th><th className="px-5 py-3">Pass ID</th><th className="px-5 py-3 text-center">Attendance</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-amrita-lineSoft">
+                          {filteredRegs.map((r) => {
+                            const present = r.attended || r.attendance === 'present';
+                            return (
+                              <tr key={r.id} className="hover:bg-amrita-canvas">
+                                <td className="px-5 py-3 font-semibold text-amrita-ink">{r.studentName}</td>
+                                <td className="px-5 py-3 font-mono text-amrita-slate">{r.registerNum}</td>
+                                <td className="px-5 py-3 text-amrita-slate">{r.department} · Y{r.year}</td>
+                                <td className="px-5 py-3 text-amrita-slate">{r.eventTitle}</td>
+                                <td className="px-5 py-3 font-mono text-amrita-faint">{r.ticketId}</td>
+                                <td className="px-5 py-3 text-center"><Badge tone={present ? 'success' : 'neutral'}>{present ? 'Present' : 'Absent'}</Badge></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+                  </Panel>
+                </>
+              )}
 
-        {/* SCANNER VERIFICATION TAB */}
-        {tab === 'scanner' && <ScannerTerminal />}
-
-        {/* NOTICES MANAGER TAB */}
-        {tab === 'announcements' && <AnnouncementManager />}
-
+              {tab === 'verify' && <Verification />}
+              {tab === 'announcements' && <Announcements />}
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
-    </motion.div>
+    </div>
+  );
+}
+
+function QuickAction({ icon: Icon, title, hint, onClick }) {
+  return (
+    <button onClick={onClick} className="group flex items-start gap-3 rounded-2xl border border-amrita-line bg-white p-5 text-left shadow-xs hover-lift-sm">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amrita-maroonSoft text-amrita-maroon"><Icon className="h-4 w-4" /></span>
+      <div>
+        <p className="text-[13px] font-bold text-amrita-ink">{title}</p>
+        <p className="mt-0.5 text-[11.5px] text-amrita-muted">{hint}</p>
+      </div>
+      <ChevronRight className="ml-auto h-4 w-4 self-center text-amrita-faint transition-transform group-hover:translate-x-0.5" />
+    </button>
+  );
+}
+
+function SectionHead({ title, sub }) {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold tracking-tight text-amrita-ink">{title}</h1>
+      {sub && <p className="mt-1 text-[13px] text-amrita-muted">{sub}</p>}
+    </div>
   );
 }
