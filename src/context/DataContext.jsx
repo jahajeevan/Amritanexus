@@ -1,75 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { adminLogin } from '../lib/api.js';
 import { createAccount, authenticate, accountExists } from '../lib/accounts.js';
+import { loadCatalog, fetchRegistrations, apiRegister, apiAdmin } from '../lib/backend.js';
 
 const DataContext = createContext();
 
 const initialEvents = [
-  {
-    id: 'evt-1',
-    title: 'CodeStorm Hackathon',
-    category: 'Hackathon',
-    department: 'CSE',
-    venue: 'Tech Arena Gate 1',
-    mapsLink: 'https://maps.google.com/?q=Amrita+Coimbatore+Tech+Arena',
-    date: '2026-05-15',
-    time: '09:00',
-    maxSeats: 100,
-    seatsFilled: 94,
-    status: 'Open',
-    coordinator: 'Dr. Ramesh Kumar (CSE)',
-    volunteers: ['Siddharth V', 'Priya K'],
-    description: 'A 24-hour intense hackathon focusing on solving campus and municipal sustainability issues using web technologies and automated models. Bring your dev setup and team templates.',
-    rules: '1. Teams of 2-4 members. 2. Strictly original code. 3. APIs must be disclosed in pitch slides. 4. Bring college ID.',
-    announcements: [
-      { id: 'ann-e1-1', title: 'Developer Kits Released', content: 'You can now download the developer API starter kits from the dashboard resources tab.', date: '2026-05-10', time: '14:00' }
-    ],
-    gallery: [
-      { id: 'gal-e1-1', url: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80', caption: 'Teams coding in tech bay' }
-    ]
-  },
-  {
-    id: 'evt-2',
-    title: 'Innovation Summit',
-    category: 'Startup',
-    department: 'MBA',
-    venue: 'Main Auditorium',
-    mapsLink: 'https://maps.google.com/?q=Amrita+Coimbatore+Main+Auditorium',
-    date: '2026-05-22',
-    time: '10:30',
-    maxSeats: 50,
-    seatsFilled: 48,
-    status: 'Almost Full',
-    coordinator: 'Prof. Anitha Roy (MBA)',
-    volunteers: ['Arjun Nair'],
-    description: 'Connect with startup founders, venture capitalists, and university business alumni. Perfect for students seeking seed funding or startup internships.',
-    rules: '1. Casual professional dress code. 2. Keep pitch decks under 5 slides. 3. Q&A round is mandatory.',
-    announcements: [],
-    gallery: []
-  },
-  {
-    id: 'evt-3',
-    title: 'IGNITE Cultural Night',
-    category: 'Cultural',
-    department: 'ECE',
-    venue: 'Open Stage Ground',
-    mapsLink: 'https://maps.google.com/?q=Amrita+Coimbatore+Sports+Complex',
-    date: '2026-05-18',
-    time: '18:00',
-    maxSeats: 250,
-    seatsFilled: 250,
-    status: 'Closed',
-    coordinator: 'Dr. Saraswathi M (ECE)',
-    volunteers: ['Gokul S', 'Nehal Jain', 'Kavitha P'],
-    description: 'The flagship cultural celebration of IGNITE 2026. Featuring live music performances, dance face-offs, classical recitals, and campus visual arts galleries.',
-    rules: '1. Gates close at 18:30. 2. QR ticket check-in is mandatory. 3. Outside food not permitted.',
-    announcements: [
-      { id: 'ann-e3-1', title: 'Pass QR Required at Entrance', content: 'Make sure your student pass QR is saved offline. Cellular connectivity might be slow around the ground gate.', date: '2026-05-16', time: '10:00' }
-    ],
-    gallery: [
-      { id: 'gal-e3-1', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80', caption: 'Opening performance showcase' }
-    ]
-  }
+  { id: 'evt-1', title: 'CodeStorm Hackathon', category: 'Hackathon', department: 'CSE', venue: 'Tech Arena Gate 1', mapsLink: 'https://maps.google.com/?q=Amrita+Coimbatore+Tech+Arena', date: '2026-05-15', time: '09:00', maxSeats: 100, seatsFilled: 94, status: 'Open', coordinator: 'Dr. Ramesh Kumar (CSE)', volunteers: ['Siddharth V', 'Priya K'], description: 'A 24-hour intense hackathon focusing on solving campus and municipal sustainability issues using web technologies and automated models. Bring your dev setup and team templates.', rules: '1. Teams of 2-4 members. 2. Strictly original code. 3. APIs must be disclosed in pitch slides. 4. Bring college ID.', announcements: [{ id: 'ann-e1-1', title: 'Developer Kits Released', content: 'You can now download the developer API starter kits from the dashboard resources tab.', date: '2026-05-10', time: '14:00' }], gallery: [{ id: 'gal-e1-1', url: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=600&q=80', caption: 'Teams coding in tech bay' }] },
+  { id: 'evt-2', title: 'Innovation Summit', category: 'Startup', department: 'MBA', venue: 'Main Auditorium', mapsLink: 'https://maps.google.com/?q=Amrita+Coimbatore+Main+Auditorium', date: '2026-05-22', time: '10:30', maxSeats: 50, seatsFilled: 48, status: 'Almost Full', coordinator: 'Prof. Anitha Roy (MBA)', volunteers: ['Arjun Nair'], description: 'Connect with startup founders, venture capitalists, and university business alumni. Perfect for students seeking seed funding or startup internships.', rules: '1. Casual professional dress code. 2. Keep pitch decks under 5 slides. 3. Q&A round is mandatory.', announcements: [], gallery: [] },
+  { id: 'evt-3', title: 'IGNITE Cultural Night', category: 'Cultural', department: 'ECE', venue: 'Open Stage Ground', mapsLink: 'https://maps.google.com/?q=Amrita+Coimbatore+Sports+Complex', date: '2026-05-18', time: '18:00', maxSeats: 250, seatsFilled: 250, status: 'Closed', coordinator: 'Dr. Saraswathi M (ECE)', volunteers: ['Gokul S', 'Nehal Jain', 'Kavitha P'], description: 'The flagship cultural celebration of IGNITE 2026. Featuring live music performances, dance face-offs, classical recitals, and campus visual arts galleries.', rules: '1. Gates close at 18:30. 2. QR ticket check-in is mandatory. 3. Outside food not permitted.', announcements: [{ id: 'ann-e3-1', title: 'Pass QR Required at Entrance', content: 'Make sure your student pass QR is saved offline. Cellular connectivity might be slow around the ground gate.', date: '2026-05-16', time: '10:00' }], gallery: [{ id: 'gal-e3-1', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80', caption: 'Opening performance showcase' }] },
 ];
 
 const initialLeaderboard = [
@@ -85,119 +24,97 @@ const initialLeaderboard = [
 
 const initialAnnouncements = [
   { id: 'gann-1', title: 'IGNITE 2026 Registrations Open', content: 'Official portal launch! Students can browse events and claim passes immediately. Contact coordinators for doubts.', date: '2026-06-13', time: '10:00' },
-  { id: 'gann-2', title: 'Technical Certificate Template Verified', content: 'Faculty committee has approved certificate designs. Digital credentials will reflect on dashboards post attendance check-in.', date: '2026-06-13', time: '11:15' }
+  { id: 'gann-2', title: 'Technical Certificate Template Verified', content: 'Faculty committee has approved certificate designs. Digital credentials will reflect on dashboards post attendance check-in.', date: '2026-06-13', time: '11:15' },
 ];
 
+const read = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
+
+// Bump the local leaderboard for a department name (used only in the offline fallback).
+const bumpLocal = (list, name, { reg = 0, chk = 0 }) => {
+  const dn = String(name || 'Computer Science').toLowerCase();
+  const match = (code) => code === dn ||
+    (dn.includes('computer') && code === 'cse') || (dn.includes('electronic') && code === 'ece') ||
+    (dn.includes('mechanical') && code === 'mechanical') || (dn.includes('civil') && code === 'civil') ||
+    (dn.includes('management') && code === 'mba') || (dn.includes('ai') && code === 'ai') ||
+    (dn.includes('cyber') && code === 'cyber security') || (dn.includes('electrical') && code === 'eee');
+  return list.map((l) => {
+    if (!match((l.dept || '').toLowerCase())) return l;
+    const registrations = Math.max(0, l.registrations + reg);
+    const checkins = Math.max(0, l.checkins + chk);
+    return { ...l, registrations, checkins, points: registrations * 10 + checkins * 50 };
+  });
+};
+
 export function DataProvider({ children }) {
-  const [events, setEvents] = useState(() => {
-    const local = localStorage.getItem('ignite_events');
-    return local ? JSON.parse(local) : initialEvents;
-  });
+  const [events, setEvents] = useState(() => read('ignite_events', initialEvents));
+  const [registrations, setRegistrations] = useState(() => read('ignite_registrations', []));
+  const [leaderboard, setLeaderboard] = useState(() => read('ignite_leaderboard', initialLeaderboard));
+  const [announcements, setAnnouncements] = useState(() => read('ignite_announcements', initialAnnouncements));
+  const [user, setUser] = useState(() => read('ignite_user', null));
 
-  const [registrations, setRegistrations] = useState(() => {
-    const local = localStorage.getItem('ignite_registrations');
-    return local ? JSON.parse(local) : [];
-  });
-
-  const [leaderboard, setLeaderboard] = useState(() => {
-    const local = localStorage.getItem('ignite_leaderboard');
-    return local ? JSON.parse(local) : initialLeaderboard;
-  });
-
-  const [announcements, setAnnouncements] = useState(() => {
-    const local = localStorage.getItem('ignite_announcements');
-    return local ? JSON.parse(local) : initialAnnouncements;
-  });
-
-  const [user, setUser] = useState(() => {
-    const local = localStorage.getItem('ignite_user');
-    return local ? JSON.parse(local) : null;
-  });
-
+  // Persist to localStorage as an offline cache.
+  useEffect(() => { localStorage.setItem('ignite_events', JSON.stringify(events)); }, [events]);
+  useEffect(() => { localStorage.setItem('ignite_registrations', JSON.stringify(registrations)); }, [registrations]);
+  useEffect(() => { localStorage.setItem('ignite_leaderboard', JSON.stringify(leaderboard)); }, [leaderboard]);
+  useEffect(() => { localStorage.setItem('ignite_announcements', JSON.stringify(announcements)); }, [announcements]);
   useEffect(() => {
-    localStorage.setItem('ignite_events', JSON.stringify(events));
-  }, [events]);
-
-  useEffect(() => {
-    localStorage.setItem('ignite_registrations', JSON.stringify(registrations));
-  }, [registrations]);
-
-  useEffect(() => {
-    localStorage.setItem('ignite_leaderboard', JSON.stringify(leaderboard));
-  }, [leaderboard]);
-
-  useEffect(() => {
-    localStorage.setItem('ignite_announcements', JSON.stringify(announcements));
-  }, [announcements]);
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('ignite_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('ignite_user');
-    }
+    if (user) localStorage.setItem('ignite_user', JSON.stringify(user));
+    else localStorage.removeItem('ignite_user');
   }, [user]);
 
-  // Auth Operations
+  // ── Supabase sync ──────────────────────────────────────────────────
+  const refreshCatalog = async () => {
+    const c = await loadCatalog();
+    if (c) { setEvents(c.events); setAnnouncements(c.announcements); setLeaderboard(c.leaderboard); }
+    return c;
+  };
+  const refreshRegistrations = async (u) => {
+    const who = u === undefined ? user : u;
+    if (!who) { setRegistrations([]); return; }
+    const opts = who.role === 'admin' ? { token: who.adminToken } : { email: who.email };
+    const r = await fetchRegistrations(opts);
+    if (r && r.ok && Array.isArray(r.registrations)) setRegistrations(r.registrations);
+  };
+
+  const booted = useRef(false);
+  useEffect(() => { if (!booted.current) { booted.current = true; refreshCatalog(); } }, []);
+  // Reload the right registrations whenever the signed-in identity changes.
+  useEffect(() => { refreshRegistrations(user); /* eslint-disable-next-line */ }, [user?.email, user?.role, user?.adminToken]);
+
+  // ── Auth ───────────────────────────────────────────────────────────
   const signInStudent = (email, registerNum) => {
     const cleanEmail = email.toLowerCase().trim();
     const cleanReg = registerNum.toUpperCase().trim();
-    
-    // Auto extract name/dept for simplicity
-    const nameMatch = cleanEmail.split('@')[0].split('.');
-    const name = nameMatch.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' ');
-    
-    // Guess department from register number
+    const name = cleanEmail.split('@')[0].split('.').map((n) => n.charAt(0).toUpperCase() + n.slice(1)).join(' ');
     let dept = 'Computer Science';
     if (cleanReg.includes('AI')) dept = 'AI';
     else if (cleanReg.includes('CYS') || cleanReg.includes('SEC')) dept = 'Cyber Security';
     else if (cleanReg.includes('ECE')) dept = 'Electronics';
-    else if (cleanReg.includes('EEE')) dept = 'Electronics'; // or similar
+    else if (cleanReg.includes('EEE')) dept = 'Electrical';
     else if (cleanReg.includes('ME')) dept = 'Mechanical';
     else if (cleanReg.includes('CE')) dept = 'Civil';
     else if (cleanReg.includes('BA')) dept = 'Management';
-    else if (cleanReg.includes('CH')) dept = 'Chemical';
-
-    const mockProfile = {
-      id: `usr-${cleanReg}`,
-      name: name || 'Student Guest',
-      registerNum: cleanReg,
-      rollNo: cleanReg,
-      role: 'student',
-      department: dept,
-      year: 'III',
-      email: cleanEmail,
-      phone: '9446001234'
-    };
-    setUser(mockProfile);
-    return { success: true, profile: mockProfile };
+    const profile = { id: `usr-${cleanReg}`, name: name || 'Student Guest', registerNum: cleanReg, rollNo: cleanReg, role: 'student', department: dept, year: 'III', email: cleanEmail, phone: '9446001234' };
+    setUser(profile);
+    return { success: true, profile };
   };
 
-  // Admin login — verified server-side (/api/admin-login) with a hashed
-  // client-side fallback. Credentials live in env vars, never in source.
   const signInAdmin = async (email, password) => {
     const res = await adminLogin({ email, password });
     if (res.ok) {
-      const adminProfile = {
-        role: 'admin',
-        email: res.email || email,
-        name: res.name || 'Faculty Coordinator',
-      };
+      const adminProfile = { role: 'admin', email: res.email || email, name: res.name || 'Faculty Coordinator', adminToken: res.token };
       setUser(adminProfile);
       return { success: true, profile: adminProfile };
     }
     return { success: false, message: res.error || 'Invalid administrative credentials.' };
   };
 
-  // Student sign-up: account is created AFTER OTP email verification (handled
-  // by the auth view). Persists to Supabase when configured, else localStorage.
   const STUDENT_DOMAIN = '@cb.students.amrita.edu';
   const registerStudent = async (fields) => {
     if (!String(fields.email).trim().toLowerCase().endsWith(STUDENT_DOMAIN)) {
       return { success: false, message: 'Only official @cb.students.amrita.edu student emails are accepted.' };
     }
-    const already = await accountExists(fields.email);
-    if (already) {
+    if (await accountExists(fields.email)) {
       return { success: false, message: 'An account with this email already exists. Please sign in.' };
     }
     const res = await createAccount(fields);
@@ -212,330 +129,159 @@ export function DataProvider({ children }) {
   };
 
   const checkAccountExists = (email) => accountExists(email);
-
-  const signOut = () => {
-    setUser(null);
-  };
-
+  const signOut = () => { setUser(null); setRegistrations([]); };
   const logout = signOut;
 
-  // Event Registrations
-  const registerForEvent = (arg1, arg2) => {
-    let eventId, studentInfo;
-    if (typeof arg1 === 'string') {
-      eventId = arg1;
-      studentInfo = arg2;
-    } else {
-      studentInfo = arg1;
-      eventId = arg2;
-    }
-
-    const event = events.find(e => e.id === eventId);
+  // ── Registrations ──────────────────────────────────────────────────
+  const registerLocal = (studentInfo, eventId) => {
+    const event = events.find((e) => e.id === eventId);
     if (!event) return { success: false, message: 'Event not found.' };
-
-    if (event.seatsFilled >= event.maxSeats || event.status === 'Closed') {
-      return { success: false, message: 'Registration has closed (maximum seats filled).' };
-    }
-
+    if (event.seatsFilled >= event.maxSeats || event.status === 'Closed') return { success: false, message: 'Registration has closed (maximum seats filled).' };
     const sName = studentInfo.studentName || studentInfo.name || 'Student Guest';
     const sReg = (studentInfo.registerNum || studentInfo.rollNo || '').toUpperCase();
-
-    // Check if student already registered for this event
-    const exists = registrations.some(
-      r => r.eventId === eventId && r.registerNum.toUpperCase() === sReg
-    );
-    if (exists) {
+    if (registrations.some((r) => r.eventId === eventId && (r.registerNum || '').toUpperCase() === sReg)) {
       return { success: false, message: 'You have already claimed a ticket for this event.' };
     }
-
-    const regDate = new Date();
-    const ticketId = `TKT-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const now = new Date();
     const newReg = {
-      id: `reg-${Date.now()}`,
-      ticketId,
-      name: sName,
-      studentName: sName,
-      registerNum: sReg,
-      rollNo: sReg,
-      department: studentInfo.department || 'Computer Science',
-      year: studentInfo.year || 'III',
-      email: studentInfo.email,
-      phone: studentInfo.phone || '9446001234',
-      eventId: event.id,
-      eventTitle: event.title,
-      eventCategory: event.category,
-      eventDate: event.date,
-      eventTime: event.time,
-      venue: event.venue || 'Tech Arena',
-      registrationDate: regDate.toISOString().split('T')[0],
-      registrationTime: regDate.toTimeString().split(' ')[0].slice(0, 5),
-      status: 'Confirmed',
-      attendance: 'absent',
-      attended: false
+      id: `reg-${Date.now()}`, ticketId: `TKT-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
+      name: sName, studentName: sName, registerNum: sReg, rollNo: sReg, department: studentInfo.department || 'Computer Science', year: studentInfo.year || 'III',
+      email: studentInfo.email, phone: studentInfo.phone || '', eventId: event.id, eventTitle: event.title, eventCategory: event.category, eventDate: event.date, eventTime: event.time,
+      venue: event.venue, registrationDate: now.toISOString().split('T')[0], registrationTime: now.toTimeString().split(' ')[0].slice(0, 5), status: 'Confirmed', attendance: 'absent', attended: false,
     };
-
-    // Update registrations
-    setRegistrations(prev => [newReg, ...prev]);
-
-    // Update event seat counter
-    setEvents(prev => prev.map(e => {
-      if (e.id === eventId) {
-        const filled = e.seatsFilled + 1;
-        let newStatus = e.status;
-        if (filled >= e.maxSeats) {
-          newStatus = 'Closed';
-        } else if (filled >= e.maxSeats * 0.9) {
-          newStatus = 'Almost Full';
-        }
-        return { ...e, seatsFilled: filled, status: newStatus };
-      }
-      return e;
+    setRegistrations((prev) => [newReg, ...prev]);
+    setEvents((prev) => prev.map((e) => {
+      if (e.id !== eventId) return e;
+      const filled = e.seatsFilled + 1;
+      const status = filled >= e.maxSeats ? 'Closed' : filled >= e.maxSeats * 0.9 ? 'Almost Full' : e.status;
+      return { ...e, seatsFilled: filled, status };
     }));
-
-    // Update department leaderboard registrations metric
-    setLeaderboard(prev => prev.map(l => {
-      const matchName = l.dept || '';
-      const deptNormalized = (studentInfo.department || 'Computer Science').toLowerCase();
-      if (matchName.toLowerCase() === deptNormalized ||
-          (deptNormalized.includes('computer') && matchName.toLowerCase() === 'cse') ||
-          (deptNormalized.includes('electronics') && matchName.toLowerCase() === 'ece') ||
-          (deptNormalized.includes('mechanical') && matchName.toLowerCase() === 'mechanical') ||
-          (deptNormalized.includes('civil') && matchName.toLowerCase() === 'civil') ||
-          (deptNormalized.includes('management') && matchName.toLowerCase() === 'mba') ||
-          (deptNormalized.includes('chemical') && matchName.toLowerCase() === 'eee')) {
-        const regs = l.registrations + 1;
-        const pts = regs * 10 + l.checkins * 50;
-        return { ...l, registrations: regs, points: pts };
-      }
-      return l;
-    }));
-
+    setLeaderboard((prev) => bumpLocal(prev, studentInfo.department, { reg: 1 }));
     return { success: true, registration: newReg };
   };
 
+  const registerForEvent = async (arg1, arg2) => {
+    const [studentInfo, eventId] = typeof arg1 === 'string' ? [arg2, arg1] : [arg1, arg2];
+    const server = await apiRegister(studentInfo, eventId);
+    if (server) {
+      if (server.success) {
+        await refreshCatalog();
+        setRegistrations((prev) => [server.registration, ...prev.filter((r) => r.id !== server.registration.id)]);
+        return { success: true, registration: server.registration };
+      }
+      return { success: false, message: server.message };
+    }
+    return registerLocal(studentInfo, eventId); // offline / dev fallback
+  };
+
   const cancelRegistration = (regId) => {
-    const reg = registrations.find(r => r.id === regId);
+    const reg = registrations.find((r) => r.id === regId);
     if (!reg) return { success: false, message: 'Ticket registration not found.' };
-
-    setRegistrations(prev => prev.map(r => r.id === regId ? { ...r, status: 'Cancelled' } : r));
-
-    // Restore seat count
-    setEvents(prev => prev.map(e => {
-      if (e.id === reg.eventId) {
-        const filled = Math.max(0, e.seatsFilled - 1);
-        let newStatus = e.status;
-        if (filled < e.maxSeats) {
-          newStatus = 'Open';
-        }
-        return { ...e, seatsFilled: filled, status: newStatus };
-      }
-      return e;
-    }));
-
-    // Revert department stats
-    setLeaderboard(prev => prev.map(l => {
-      const matchName = l.dept || '';
-      const deptNormalized = (reg.department || 'Computer Science').toLowerCase();
-      if (matchName.toLowerCase() === deptNormalized ||
-          (deptNormalized.includes('computer') && matchName.toLowerCase() === 'cse') ||
-          (deptNormalized.includes('electronics') && matchName.toLowerCase() === 'ece')) {
-        const regs = Math.max(0, l.registrations - 1);
-        const pts = regs * 10 + l.checkins * 50;
-        return { ...l, registrations: regs, points: pts };
-      }
-      return l;
-    }));
-
+    setRegistrations((prev) => prev.map((r) => (r.id === regId ? { ...r, status: 'Cancelled' } : r)));
+    setEvents((prev) => prev.map((e) => (e.id === reg.eventId ? { ...e, seatsFilled: Math.max(0, e.seatsFilled - 1), status: 'Open' } : e)));
+    setLeaderboard((prev) => bumpLocal(prev, reg.department, { reg: -1 }));
     return { success: true };
   };
 
-  // QR Attendance checkin operations
-  const verifyAttendance = (regId) => {
-    const reg = registrations.find(r => r.id === regId || r.ticketId === regId);
+  // ── Attendance ─────────────────────────────────────────────────────
+  const verifyAttendanceLocal = (regId) => {
+    const reg = registrations.find((r) => r.id === regId || r.ticketId === regId);
     if (!reg) return { success: false, message: 'Ticket code does not match database.' };
     if (reg.status === 'Cancelled') return { success: false, message: 'This ticket registration is Cancelled.' };
     if (reg.attended || reg.attendance === 'present') return { success: true, message: 'Student is already checked in.', registration: reg };
-
-    setRegistrations(prev => prev.map(r => r.id === reg.id ? { ...r, attendance: 'present', attended: true } : r));
-
-    // Update leaderboard checkins
-    setLeaderboard(prev => prev.map(l => {
-      const matchName = l.dept || '';
-      const deptNormalized = (reg.department || 'Computer Science').toLowerCase();
-      if (matchName.toLowerCase() === deptNormalized ||
-          (deptNormalized.includes('computer') && matchName.toLowerCase() === 'cse') ||
-          (deptNormalized.includes('electronics') && matchName.toLowerCase() === 'ece')) {
-        const checkins = l.checkins + 1;
-        const pts = l.registrations * 10 + checkins * 50;
-        return { ...l, checkins: checkins, points: pts };
-      }
-      return l;
-    }));
-
+    setRegistrations((prev) => prev.map((r) => (r.id === reg.id ? { ...r, attendance: 'present', attended: true } : r)));
+    setLeaderboard((prev) => bumpLocal(prev, reg.department, { chk: 1 }));
     return { success: true, message: 'Attendance recorded successfully!', registration: { ...reg, attendance: 'present', attended: true } };
   };
 
-  const markAttendance = verifyAttendance;
-
-  // Admin Event Management operations
-  const addEvent = (eventInfo) => {
-    const newId = `evt-${Date.now()}`;
-    const newEvent = {
-      id: newId,
-      title: eventInfo.title,
-      category: eventInfo.category,
-      department: eventInfo.department,
-      venue: eventInfo.venue,
-      mapsLink: eventInfo.mapsLink,
-      date: eventInfo.date,
-      time: eventInfo.time,
-      maxSeats: parseInt(eventInfo.maxSeats) || 100,
-      seatsFilled: 0,
-      status: eventInfo.status || 'Open',
-      coordinator: eventInfo.coordinator || 'Unassigned Faculty',
-      volunteers: [],
-      description: eventInfo.description || '',
-      rules: eventInfo.rules || '',
-      announcements: [],
-      gallery: [],
-      points: eventInfo.points || 50
-    };
-    setEvents(prev => [newEvent, ...prev]);
-    return { success: true, event: newEvent };
+  const adminAction = async (action, payload) => {
+    const token = user?.adminToken;
+    if (!token) return null;
+    return apiAdmin(action, payload, token); // {success,...} | null
   };
 
-  const updateEvent = (arg1, arg2) => {
-    let eventId, updatedInfo;
-    if (typeof arg1 === 'string') {
-      eventId = arg1;
-      updatedInfo = arg2;
-    } else {
-      eventId = arg1.id;
-      updatedInfo = arg1;
+  const verifyAttendance = async (regId) => {
+    const r = await adminAction('markAttendance', { id: regId, ticketId: regId });
+    if (r) {
+      if (r.success) { await refreshCatalog(); await refreshRegistrations(); return { success: true, message: r.already ? 'Student is already checked in.' : 'Attendance recorded successfully!', registration: r.registration }; }
+      return { success: false, message: r.message };
     }
+    return verifyAttendanceLocal(regId);
+  };
+  const markAttendance = verifyAttendance;
 
-    setEvents(prev => prev.map(e => {
-      if (e.id === eventId) {
-        return {
-          ...e,
-          ...updatedInfo,
-          maxSeats: parseInt(updatedInfo.maxSeats) || e.maxSeats
-        };
-      }
-      return e;
-    }));
+  // ── Admin: events ──────────────────────────────────────────────────
+  const addEventLocal = (info) => {
+    const ev = { id: `evt-${Date.now()}`, title: info.title, category: info.category, department: info.department, venue: info.venue, mapsLink: info.mapsLink, date: info.date, time: info.time, maxSeats: parseInt(info.maxSeats) || 100, seatsFilled: 0, status: info.status || 'Open', coordinator: info.coordinator || 'Unassigned Faculty', volunteers: [], description: info.description || '', rules: info.rules || '', announcements: [], gallery: [], points: info.points || 50 };
+    setEvents((prev) => [ev, ...prev]);
+    return { success: true, event: ev };
+  };
+  const addEvent = async (info) => {
+    const r = await adminAction('createEvent', info);
+    if (r) { if (r.success) await refreshCatalog(); return r; }
+    return addEventLocal(info);
+  };
+
+  const updateEvent = async (arg1, arg2) => {
+    const [eventId, info] = typeof arg1 === 'string' ? [arg1, arg2] : [arg1.id, arg1];
+    const r = await adminAction('updateEvent', { ...info, id: eventId });
+    if (r) { if (r.success) await refreshCatalog(); return r; }
+    setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, ...info, maxSeats: parseInt(info.maxSeats) || e.maxSeats } : e)));
     return { success: true };
   };
 
-  const deleteEvent = (eventId) => {
-    setEvents(prev => prev.filter(e => e.id !== eventId));
-    // Cancel registrations for deleted events
-    setRegistrations(prev => prev.map(r => r.eventId === eventId ? { ...r, status: 'Cancelled' } : r));
+  const deleteEvent = async (eventId) => {
+    const r = await adminAction('deleteEvent', { id: eventId });
+    if (r) { if (r.success) await refreshCatalog(); return r; }
+    setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    setRegistrations((prev) => prev.map((r2) => (r2.eventId === eventId ? { ...r2, status: 'Cancelled' } : r2)));
     return { success: true };
   };
 
   const duplicateEvent = (eventId) => {
-    const event = events.find(e => e.id === eventId);
+    const event = events.find((e) => e.id === eventId);
     if (!event) return { success: false };
-    const dup = {
-      ...event,
-      id: `evt-${Date.now()}`,
-      title: `${event.title} (Copy)`,
-      seatsFilled: 0,
-      status: 'Open',
-      volunteers: [],
-      announcements: [],
-      gallery: []
-    };
-    setEvents(prev => [dup, ...prev]);
+    setEvents((prev) => [{ ...event, id: `evt-${Date.now()}`, title: `${event.title} (Copy)`, seatsFilled: 0, status: 'Open', volunteers: [], announcements: [], gallery: [] }, ...prev]);
     return { success: true };
   };
 
-  // Gallery uploads
   const addGalleryPhoto = (eventId, url, caption) => {
-    setEvents(prev => prev.map(e => {
-      if (e.id === eventId) {
-        const photo = { id: `gal-${Date.now()}`, url, caption };
-        return { ...e, gallery: [photo, ...e.gallery] };
-      }
-      return e;
-    }));
+    setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, gallery: [{ id: `gal-${Date.now()}`, url, caption }, ...e.gallery] } : e)));
   };
-
-  // Volunteer recruitment
   const recruitStudentVolunteer = (eventId, studentName) => {
-    let alreadyVolunteer = false;
-    setEvents(prev => prev.map(e => {
-      if (e.id === eventId) {
-        if (e.volunteers.includes(studentName)) {
-          alreadyVolunteer = true;
-          return e;
-        }
-        return { ...e, volunteers: [...e.volunteers, studentName] };
-      }
-      return e;
+    let ok = true;
+    setEvents((prev) => prev.map((e) => {
+      if (e.id !== eventId) return e;
+      if (e.volunteers.includes(studentName)) { ok = false; return e; }
+      return { ...e, volunteers: [...e.volunteers, studentName] };
     }));
-    return !alreadyVolunteer;
+    return ok;
   };
 
-  // General announcements
-  const createAnnouncement = (title, content, eventId = null) => {
-    const newNotice = {
-      id: `gann-${Date.now()}`,
-      title,
-      content,
-      eventId,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toTimeString().split(' ')[0].slice(0, 5)
-    };
-    setAnnouncements(prev => [newNotice, ...prev]);
-    return { success: true };
+  // ── Admin: announcements ───────────────────────────────────────────
+  const addAnnouncement = async (info) => {
+    const r = await adminAction('addAnnouncement', info);
+    if (r) { if (r.success) await refreshCatalog(); return r; }
+    const ann = { id: `gann-${Date.now()}`, title: info.title, content: info.content, date: info.date || new Date().toLocaleDateString('en-IN'), time: info.time || new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) };
+    setAnnouncements((prev) => [ann, ...prev]);
+    return { success: true, announcement: ann };
   };
+  const createAnnouncement = (title, content, eventId = null) => addAnnouncement({ title, content, eventId });
 
-  const addAnnouncement = (annInfo) => {
-    const newAnn = {
-      id: `gann-${Date.now()}`,
-      title: annInfo.title,
-      content: annInfo.content,
-      date: annInfo.date || new Date().toLocaleDateString('en-IN'),
-      time: annInfo.time || new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    };
-    setAnnouncements(prev => [newAnn, ...prev]);
-    return { success: true, announcement: newAnn };
-  };
-
-  const deleteAnnouncement = (annId) => {
-    setAnnouncements(prev => prev.filter(a => a.id !== annId));
+  const deleteAnnouncement = async (annId) => {
+    const r = await adminAction('deleteAnnouncement', { id: annId });
+    if (r) { if (r.success) await refreshCatalog(); return r; }
+    setAnnouncements((prev) => prev.filter((a) => a.id !== annId));
     return { success: true };
   };
 
   return (
     <DataContext.Provider value={{
-      events,
-      registrations,
-      leaderboard,
-      announcements,
-      user,
-      signInStudent,
-      signInAdmin,
-      registerStudent,
-      loginStudent,
-      checkAccountExists,
-      signOut,
-      logout,
-      registerForEvent,
-      cancelRegistration,
-      verifyAttendance,
-      markAttendance,
-      addEvent,
-      updateEvent,
-      deleteEvent,
-      duplicateEvent,
-      addGalleryPhoto,
-      recruitStudentVolunteer,
-      createAnnouncement,
-      addAnnouncement,
-      deleteAnnouncement
+      events, registrations, leaderboard, announcements, user,
+      signInStudent, signInAdmin, registerStudent, loginStudent, checkAccountExists, signOut, logout,
+      registerForEvent, cancelRegistration, verifyAttendance, markAttendance,
+      addEvent, updateEvent, deleteEvent, duplicateEvent, addGalleryPhoto, recruitStudentVolunteer,
+      createAnnouncement, addAnnouncement, deleteAnnouncement,
     }}>
       {children}
     </DataContext.Provider>
@@ -544,9 +290,6 @@ export function DataProvider({ children }) {
 
 export function useData() {
   const context = useContext(DataContext);
-  if (!context) {
-    throw new Error('useData must be used inside a DataProvider');
-  }
+  if (!context) throw new Error('useData must be used inside a DataProvider');
   return context;
 }
-
