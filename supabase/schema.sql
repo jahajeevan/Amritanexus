@@ -123,3 +123,24 @@ alter table public.registrations enable row level security;
 
 create index if not exists registrations_event_idx on public.registrations (event_id);
 create index if not exists registrations_class_idx on public.registrations (department, year, section);
+
+-- ── Realtime (live cross-device sync) ───────────────────────────────
+-- Publish the PUBLIC catalog tables so every signed-in client is pushed a
+-- change the instant a registration/attendance updates seats or credits; each
+-- client then re-pulls its own registrations via the authenticated API.
+-- registrations is intentionally NOT published (PII stays server-only).
+do $$
+begin
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    create publication supabase_realtime;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and tablename='events') then
+    alter publication supabase_realtime add table public.events;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and tablename='departments') then
+    alter publication supabase_realtime add table public.departments;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and tablename='announcements') then
+    alter publication supabase_realtime add table public.announcements;
+  end if;
+end $$;
