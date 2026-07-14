@@ -7,7 +7,7 @@ import {
   Code2, FlaskConical, Music4, Rocket, Lightbulb, Users2, CalendarCheck,
 } from 'lucide-react';
 import { motion, useInView } from 'framer-motion';
-import { statusBadgeClass, seatInfo, formatEventDate } from '../components/eventUi';
+import { statusBadgeClass, seatInfo, formatEventDate, isEventVisible } from '../components/eventUi';
 
 /* ─────────────────────────── shared utilities ─────────────────────────── */
 
@@ -309,7 +309,9 @@ function EntryPassPreview({ reg = null, event = null, setView }) {
 export default function LandingView({ setView }) {
   const { events, leaderboard, registrations, user } = useData();
   const board = [...leaderboard].sort((a, b) => b.points - a.points);
-  const upcoming = [...events].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
+  // Only events still open for registration (deadline not passed) show publicly.
+  const liveEvents = events.filter(isEventVisible);
+  const upcoming = [...liveEvents].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
 
   // The signed-in student's pass to feature (prefer a checked-in one), else null.
   const featuredReg = user && user.role !== 'admin' && registrations.length

@@ -23,6 +23,20 @@ export function statusBadgeClass(status) {
   return STATUS_BADGE[status] || STATUS_BADGE.Open;
 }
 
+// True once an event's registration deadline (last day to register) has passed.
+export function isPastDeadline(event) {
+  if (!event?.deadline) return false;
+  const d = new Date(`${event.deadline}T23:59:59`);
+  if (Number.isNaN(d.getTime())) return false;
+  return Date.now() > d.getTime();
+}
+
+// Whether an event should still appear on the PUBLIC site. Once its deadline
+// passes it drops off the homepage and events directory automatically.
+export function isEventVisible(event) {
+  return !isPastDeadline(event);
+}
+
 // Seat math used by cards, the hero seat bar and the registration card.
 export function seatInfo(event) {
   const max = Number(event?.maxSeats) || 0;
@@ -30,8 +44,9 @@ export function seatInfo(event) {
   const seatsLeft = Math.max(0, max - filled);
   const pct = max ? Math.min(100, Math.round((filled / max) * 100)) : 0;
   const isFull = seatsLeft <= 0;
-  const isClosed = event?.status === 'Closed' || event?.status === 'Completed' || isFull;
-  return { max, filled, seatsLeft, pct, isFull, isClosed, isOpen: !isClosed };
+  const pastDeadline = isPastDeadline(event);
+  const isClosed = event?.status === 'Closed' || event?.status === 'Completed' || isFull || pastDeadline;
+  return { max, filled, seatsLeft, pct, isFull, pastDeadline, isClosed, isOpen: !isClosed };
 }
 
 // "2026-05-15" -> "15 May 2026" (or with a weekday when asked).

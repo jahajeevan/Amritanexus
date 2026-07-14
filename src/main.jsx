@@ -270,10 +270,10 @@ function App() {
         return <EventDetailsView eventId={activeView.split(':')[1]} setView={setView} />;
       case activeView === 'dashboard':
         if (!user) return <SignInView setView={setView} />;
-        if (user.role === 'admin') return <AdminDashboardView setView={setView} />;
+        if (user.role === 'admin' || user.role === 'coordinator') return <AdminDashboardView setView={setView} />;
         return <StudentDashboardView setView={setView} />;
       case activeView === 'admin':
-        if (!user || user.role !== 'admin') return <SignInView setView={setView} />;
+        if (!user || (user.role !== 'admin' && user.role !== 'coordinator')) return <SignInView setView={setView} />;
         return <AdminDashboardView setView={setView} />;
       case activeView === 'signin':
         return <SignInView setView={setView} />;

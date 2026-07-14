@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import { EventCard } from './LandingView';
 import { EmptyState } from '../components/ui';
-import { seatInfo } from '../components/eventUi';
+import { seatInfo, isEventVisible } from '../components/eventUi';
 import { Search, X, ChevronDown, SlidersHorizontal, CalendarSearch } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -54,7 +54,10 @@ function Chip({ active, children, onClick }) {
 }
 
 export default function DiscoveryView({ setView }) {
-  const { events } = useData();
+  const { events: allEvents } = useData();
+  // Public directory shows only events still open for registration (deadline
+  // not passed). Past-deadline events drop off automatically.
+  const events = useMemo(() => allEvents.filter(isEventVisible), [allEvents]);
 
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');

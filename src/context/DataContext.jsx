@@ -146,7 +146,10 @@ export function DataProvider({ children }) {
   const signInAdmin = async (email, password) => {
     const res = await adminLogin({ email, password });
     if (res.ok) {
-      const adminProfile = { role: 'admin', email: res.email || email, name: res.name || 'Faculty Coordinator', adminToken: res.token };
+      // role comes back as 'admin' (env credentials) or 'coordinator' (a venue
+      // login the admin created). Coordinators get a restricted console.
+      const role = res.role === 'coordinator' ? 'coordinator' : 'admin';
+      const adminProfile = { role, email: res.email || email, name: res.name || (role === 'coordinator' ? 'Venue Coordinator' : 'Faculty Coordinator'), adminToken: res.token };
       setUser(adminProfile);
       return { success: true, profile: adminProfile };
     }
@@ -277,7 +280,7 @@ export function DataProvider({ children }) {
 
   // ── Admin: events ──────────────────────────────────────────────────
   const addEventLocal = (info) => {
-    const ev = { id: `evt-${Date.now()}`, title: info.title, category: info.category, department: info.department, venue: info.venue, mapsLink: info.mapsLink, date: info.date, time: info.time, maxSeats: parseInt(info.maxSeats) || 100, seatsFilled: 0, status: info.status || 'Open', coordinator: info.coordinator || 'Unassigned Faculty', volunteers: [], description: info.description || '', rules: info.rules || '', announcements: [], gallery: [], points: info.points || 50 };
+    const ev = { id: `evt-${Date.now()}`, title: info.title, category: info.category, department: info.department, venue: info.venue, mapsLink: info.mapsLink, date: info.date, time: info.time, deadline: info.deadline || null, maxSeats: parseInt(info.maxSeats) || 100, seatsFilled: 0, status: info.status || 'Open', coordinator: info.coordinator || 'Unassigned Faculty', volunteers: [], description: info.description || '', rules: info.rules || '', announcements: [], gallery: info.image ? [{ id: `gal-${Date.now()}`, url: info.image }] : [], points: info.points || 50 };
     setEvents((prev) => [ev, ...prev]);
     return { success: true, event: ev };
   };
@@ -333,6 +336,11 @@ export function DataProvider({ children }) {
   };
   const createAnnouncement = (title, content, eventId = null) => addAnnouncement({ title, content, eventId });
 
+  // ── Admin: staff coordinators (limited venue logins) ───────────────
+  const createCoordinator = (info) => adminAction('createCoordinator', info);
+  const listCoordinators = async () => { const r = await adminAction('listCoordinators', {}); return r?.success ? r.coordinators : []; };
+  const deleteCoordinator = (id) => adminAction('deleteCoordinator', { id });
+
   const deleteAnnouncement = async (annId) => {
     const r = await adminAction('deleteAnnouncement', { id: annId });
     if (r) { if (r.success) await refreshCatalog(); return r; }
@@ -347,6 +355,7 @@ export function DataProvider({ children }) {
       registerForEvent, cancelRegistration, verifyAttendance, markAttendance, updateRegistration,
       addEvent, updateEvent, deleteEvent, duplicateEvent, addGalleryPhoto, recruitStudentVolunteer,
       createAnnouncement, addAnnouncement, deleteAnnouncement,
+      createCoordinator, listCoordinators, deleteCoordinator,
     }}>
       {children}
     </DataContext.Provider>

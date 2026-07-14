@@ -2,7 +2,7 @@
 // Reads registrations (which hold PII, so no anon access). A student passes
 // their email to fetch their own passes; an admin passes a valid token to fetch
 // all of them (used by the operations console).
-import { supabaseAdmin, mapRegistration, verifyAdminToken } from './_supabase.js';
+import { supabaseAdmin, mapRegistration, verifyRoleToken } from './_supabase.js';
 import { applyCors, readJson } from './_otp.js';
 
 export default async function handler(req, res) {
@@ -14,8 +14,8 @@ export default async function handler(req, res) {
     const { email, token } = await readJson(req);
     let q = supabaseAdmin.from('registrations').select('*').order('created_at', { ascending: false });
 
-    if (token && verifyAdminToken(token).ok) {
-      // admin: all registrations
+    if (token && verifyRoleToken(token).ok) {
+      // admin or venue coordinator: all registrations
     } else if (email) {
       q = q.eq('email', String(email).toLowerCase().trim());
     } else {

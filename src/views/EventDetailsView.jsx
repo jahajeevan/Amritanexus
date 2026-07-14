@@ -329,6 +329,7 @@ export default function EventDetailsView({ eventId, setView }) {
     { icon: Clock, label: 'Start time', value: formatTime(event.time) },
     { icon: MapPin, label: 'Venue', value: event.venue },
     { icon: Users, label: 'Capacity', value: `${event.maxSeats} seats` },
+    ...(event.deadline ? [{ icon: CalendarClock, label: 'Register by', value: formatEventDate(event.deadline) }] : []),
   ];
 
   const tabs = [

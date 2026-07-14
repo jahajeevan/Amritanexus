@@ -1,25 +1,34 @@
 // POST /api/admin  { action, token, payload }  ->  { success, ... }
 // Admin-gated write dispatcher. Every action requires a valid admin token
 // (issued by /api/admin-login). Runs with the service role.
-import { supabaseAdmin, mapEvent, mapRegistration, mapAnnouncement, verifyAdminToken, bumpDepartment } from './_supabase.js';
+import { supabaseAdmin, mapEvent, mapRegistration, mapAnnouncement, verifyRoleToken, bumpDepartment, hashPw, randomSalt } from './_supabase.js';
 import { applyCors, readJson } from './_otp.js';
 
-const eventRow = (p = {}) => ({
-  title: p.title,
-  category: p.category,
-  department: p.department,
-  venue: p.venue,
-  maps_link: p.mapsLink || null,
-  date: p.date || null,
-  time: p.time || null,
-  max_seats: parseInt(p.maxSeats) || 100,
-  status: p.status || 'Open',
-  coordinator: p.coordinator || null,
-  description: p.description || '',
-  rules: p.rules || '',
-  prizes: p.prizes || '',
-  points: parseInt(p.points) || 50,
-});
+const eventRow = (p = {}) => {
+  const row = {
+    title: p.title,
+    category: p.category,
+    department: p.department,
+    venue: p.venue,
+    maps_link: p.mapsLink || null,
+    date: p.date || null,
+    time: p.time || null,
+    deadline: p.deadline || null,
+    max_seats: parseInt(p.maxSeats) || 100,
+    status: p.status || 'Open',
+    coordinator: p.coordinator || null,
+    description: p.description || '',
+    rules: p.rules || '',
+    prizes: p.prizes || '',
+    points: parseInt(p.points) || 50,
+  };
+  // A cover image URL from the form becomes the event's gallery.
+  if (p.image !== undefined) row.gallery = p.image ? [{ id: `gal-${Date.now()}`, url: p.image }] : [];
+  return row;
+};
+
+// Actions a limited venue coordinator may perform; everything else is admin-only.
+const COORDINATOR_ACTIONS = new Set(['markAttendance', 'listRegistrations']);
 
 export default async function handler(req, res) {
   applyCors(req, res);
@@ -27,8 +36,12 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
   const { action, token, payload = {} } = await readJson(req);
-  const v = verifyAdminToken(token);
+  const v = verifyRoleToken(token);
   if (!v.ok) return res.status(401).json({ success: false, message: v.error });
+  // Coordinators are restricted to viewing registrations + marking attendance.
+  if (v.role !== 'admin' && !COORDINATOR_ACTIONS.has(action)) {
+    return res.status(403).json({ success: false, message: 'Your account does not have permission for this action.' });
+  }
 
   try {
     switch (action) {
@@ -85,6 +98,28 @@ export default async function handler(req, res) {
         const credits = Number.isFinite(Number(ev?.points)) ? Number(ev.points) : 50;
         await bumpDepartment(reg.department, { checkins: 1, points: credits });
         return res.json({ success: true, registration: mapRegistration(updated), credits });
+      }
+      case 'createCoordinator': {
+        const name = String(payload.name || '').trim();
+        const email = String(payload.email || '').trim().toLowerCase();
+        const password = String(payload.password || '');
+        if (!name || !email || password.length < 6) return res.status(400).json({ success: false, message: 'Name, email and a 6+ character password are required.' });
+        const { data: exists } = await supabaseAdmin.from('coordinators').select('id').eq('email', email).maybeSingle();
+        if (exists) return res.status(409).json({ success: false, message: 'A coordinator with this email already exists.' });
+        const salt = randomSalt();
+        const row = { id: `coord-${Date.now()}-${Math.floor(Math.random() * 1000)}`, name, email, salt, password_hash: hashPw(password, salt) };
+        const { error } = await supabaseAdmin.from('coordinators').insert(row);
+        if (error) throw error;
+        return res.json({ success: true, coordinator: { id: row.id, name, email } });
+      }
+      case 'listCoordinators': {
+        const { data } = await supabaseAdmin.from('coordinators').select('id,name,email,created_at').order('created_at', { ascending: false });
+        return res.json({ success: true, coordinators: (data || []).map((c) => ({ id: c.id, name: c.name, email: c.email, createdAt: c.created_at })) });
+      }
+      case 'deleteCoordinator': {
+        const { error } = await supabaseAdmin.from('coordinators').delete().eq('id', payload.id);
+        if (error) throw error;
+        return res.json({ success: true });
       }
       case 'updateRegistration': {
         // Admin override of a student's class details (year / section) on a

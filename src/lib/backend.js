@@ -8,7 +8,7 @@ import { supabase, isSupabaseReady } from './supabaseClient.js';
 
 const mapEvent = (e) => ({
   id: e.id, title: e.title, category: e.category, department: e.department,
-  venue: e.venue, mapsLink: e.maps_link, date: e.date, time: e.time,
+  venue: e.venue, mapsLink: e.maps_link, date: e.date, time: e.time, deadline: e.deadline,
   maxSeats: e.max_seats, seatsFilled: e.seats_filled, status: e.status,
   coordinator: e.coordinator, description: e.description, rules: e.rules,
   prizes: e.prizes, points: e.points,

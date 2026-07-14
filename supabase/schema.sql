@@ -40,6 +40,7 @@ create table if not exists public.events (
   maps_link     text,
   date          date,
   time          text,
+  deadline      date,             -- last day students can register
   max_seats     int  default 100,
   seats_filled  int  default 0,
   status        text default 'Open',
@@ -54,6 +55,7 @@ create table if not exists public.events (
   created_at    timestamptz not null default now()
 );
 alter table public.events add column if not exists points int default 50;
+alter table public.events add column if not exists deadline date;
 alter table public.events enable row level security;
 drop policy if exists "events_read" on public.events;
 create policy "events_read" on public.events for select to anon, authenticated using (true);
@@ -123,6 +125,19 @@ alter table public.registrations enable row level security;
 
 create index if not exists registrations_event_idx on public.registrations (event_id);
 create index if not exists registrations_class_idx on public.registrations (department, year, section);
+
+-- ── coordinators (limited venue-staff logins created by the admin) ──
+-- Server-only, like students: can view registrations + scan attendance, never
+-- create/edit. No anon policies (auth goes through /api).
+create table if not exists public.coordinators (
+  id            text primary key,
+  name          text not null,
+  email         text unique not null,
+  salt          text not null,
+  password_hash text not null,
+  created_at    timestamptz not null default now()
+);
+alter table public.coordinators enable row level security;
 
 -- ── Realtime (live cross-device sync) ───────────────────────────────
 -- Publish the PUBLIC catalog tables so every signed-in client is pushed a

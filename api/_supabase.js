@@ -27,39 +27,55 @@ const fromB64url = (s) =>
 
 const hmac = (str, secret) => crypto.createHmac('sha256', secret).update(str).digest('hex');
 
-export function signAdminToken() {
+// Sign a session token carrying a role ('admin' or 'coordinator').
+export function signRoleToken(role = 'admin') {
   const secret = process.env.OTP_SECRET;
   if (!secret) throw new Error('OTP_SECRET is not configured');
-  const payload = { r: 'admin', x: Date.now() + ADMIN_TOKEN_TTL_MS };
+  const payload = { r: role, x: Date.now() + ADMIN_TOKEN_TTL_MS };
   const body = b64url(JSON.stringify(payload));
   return `${body}.${hmac(body, secret)}`;
 }
 
-export function verifyAdminToken(token) {
+export const signAdminToken = () => signRoleToken('admin');
+
+// Verify a session token and return its role. { ok, role } | { ok:false, error }.
+export function verifyRoleToken(token) {
   const secret = process.env.OTP_SECRET;
   if (!secret) return { ok: false, error: 'Server not configured.' };
-  if (!token) return { ok: false, error: 'Missing admin token.' };
+  if (!token) return { ok: false, error: 'Missing session token.' };
 
   const [body, sig] = String(token).split('.');
-  if (!body || !sig) return { ok: false, error: 'Malformed admin token.' };
+  if (!body || !sig) return { ok: false, error: 'Malformed session token.' };
 
   const expected = hmac(body, secret);
   const sigBuf = Buffer.from(sig);
   const expBuf = Buffer.from(expected);
   if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-    return { ok: false, error: 'Admin token signature is invalid.' };
+    return { ok: false, error: 'Session token signature is invalid.' };
   }
 
   let payload;
   try {
     payload = JSON.parse(fromB64url(body));
   } catch {
-    return { ok: false, error: 'Malformed admin token.' };
+    return { ok: false, error: 'Malformed session token.' };
   }
-  if (payload.r !== 'admin') return { ok: false, error: 'Not an admin token.' };
-  if (Date.now() > payload.x) return { ok: false, error: 'Admin session expired. Please sign in again.' };
+  if (!payload.r) return { ok: false, error: 'No role on token.' };
+  if (Date.now() > payload.x) return { ok: false, error: 'Session expired. Please sign in again.' };
+  return { ok: true, role: payload.r };
+}
+
+// Back-compat: strict admin check.
+export function verifyAdminToken(token) {
+  const v = verifyRoleToken(token);
+  if (!v.ok) return v;
+  if (v.role !== 'admin') return { ok: false, error: 'Not an admin token.' };
   return { ok: true };
 }
+
+// Password hashing shared by student + coordinator auth (salted SHA-256).
+export const randomSalt = () => crypto.randomBytes(12).toString('hex');
+export const hashPw = (password, salt) => crypto.createHash('sha256').update(`${salt}:${password}`).digest('hex');
 
 // ── Department code normalization ────────────────────────────────────
 // The `departments` table keys on short codes (CSE, ECE, EEE, MBA, …) while
@@ -150,6 +166,7 @@ export function mapEvent(e) {
     mapsLink: e.maps_link,
     date: e.date,
     time: e.time,
+    deadline: e.deadline,
     maxSeats: e.max_seats,
     seatsFilled: e.seats_filled,
     status: e.status,

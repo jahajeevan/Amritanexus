@@ -12,21 +12,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { DEPARTMENTS, SECTIONS, YEARS, normalizeDept, deptLabel } from '../lib/departments';
 
 const CATEGORIES = ['Hackathon', 'Workshop', 'Technical', 'Sports', 'Cultural', 'Arts', 'Music', 'Startup', 'Seminar', 'Gaming'];
-const EMPTY = { title: '', category: 'Technical', department: 'CSE', date: '', time: '', venue: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '' };
+const EMPTY = { title: '', category: 'Technical', department: 'CSE', date: '', time: '', deadline: '', venue: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '', image: '' };
 
 const selectCls = 'h-10 w-full rounded-xl border border-amrita-line bg-white px-3 text-[13px] font-medium text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10';
 const statusTone = { Open: 'success', 'Almost Full': 'warning', Closed: 'danger', Upcoming: 'maroon', Completed: 'neutral' };
 
 /* ── Event create/edit form ── */
 function EventForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = useState({ ...EMPTY, ...initial });
+  const [form, setForm] = useState({ ...EMPTY, ...initial, deadline: initial?.deadline || '', image: initial?.image || initial?.gallery?.[0]?.url || '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.title || !form.date || !form.venue) return setError('Title, date and venue are required.');
+    if (!form.title || !form.date || !form.venue) return setError('Title, event date and venue are required.');
+    if (!form.deadline) return setError('Set the registration deadline (last day students can register).');
+    if (form.deadline && form.date && form.deadline > form.date) return setError('Registration deadline must be on or before the event date.');
     setLoading(true);
     await new Promise((r) => setTimeout(r, 300));
     onSave(form);
@@ -43,9 +45,14 @@ function EventForm({ initial, onSave, onCancel }) {
         <div className="md:col-span-2"><Input label="Event title" placeholder="e.g. CodeStorm Hackathon" value={form.title} onChange={(e) => set('title', e.target.value)} required /></div>
         <Field label="Category"><select value={form.category} onChange={(e) => set('category', e.target.value)} className={selectCls}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></Field>
         <Field label="Department"><select value={form.department} onChange={(e) => set('department', e.target.value)} className={selectCls}>{DEPARTMENTS.map((d) => <option key={d.code} value={d.code}>{d.label}</option>)}</select></Field>
-        <Input label="Date" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
+        <Input label="Event date" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
         <Input label="Time" type="time" value={form.time} onChange={(e) => set('time', e.target.value)} />
+        <div className="md:col-span-2">
+          <Input label="Registration deadline (last day to register)" type="date" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} required />
+          <p className="mt-1 text-[11px] text-amrita-muted">After this date registration closes automatically and the event stops showing on the public site.</p>
+        </div>
         <div className="md:col-span-2"><Input label="Venue" placeholder="e.g. Tech Arena Gate 1" value={form.venue} onChange={(e) => set('venue', e.target.value)} required /></div>
+        <div className="md:col-span-2"><Input label="Cover image URL (optional)" placeholder="https://images.unsplash.com/…" value={form.image} onChange={(e) => set('image', e.target.value)} /></div>
         <div className="md:col-span-2"><Input label="Google Maps link" placeholder="Share URL" value={form.mapsLink} onChange={(e) => set('mapsLink', e.target.value)} /></div>
         <Input label="Max seats" type="number" value={form.maxSeats} onChange={(e) => set('maxSeats', parseInt(e.target.value) || 1)} />
         <Input label="Credits awarded" type="number" value={form.points} onChange={(e) => set('points', parseInt(e.target.value) || 0)} />
@@ -619,6 +626,83 @@ function TopStudents() {
   );
 }
 
+/* ── Staff coordinators — admin creates limited-access venue logins ── */
+function StaffCoordinators() {
+  const { createCoordinator, listCoordinators, deleteCoordinator } = useData();
+  const [list, setList] = useState([]);
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [msg, setMsg] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  const refresh = async () => setList((await listCoordinators()) || []);
+  useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setMsg(null);
+    if (form.name.trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) || form.password.length < 6) {
+      return setMsg({ t: 'err', m: 'Enter a name, a valid email and a password of at least 6 characters.' });
+    }
+    setSaving(true);
+    const r = await createCoordinator({ name: form.name.trim(), email: form.email.trim().toLowerCase(), password: form.password });
+    setSaving(false);
+    if (r?.success) {
+      setMsg({ t: 'ok', m: `Coordinator "${form.name.trim()}" created. Share the email + password with them — they sign in from the Admin tab.` });
+      setForm({ name: '', email: '', password: '' });
+      refresh();
+    } else setMsg({ t: 'err', m: r?.message || 'Could not create coordinator.' });
+  };
+
+  const remove = async (id) => { await deleteCoordinator(id); setConfirmDel(null); refresh(); };
+
+  return (
+    <div className="space-y-6">
+      <SectionHead title="Staff coordinators" sub="Create limited logins for venue staff — they can view registrations and scan attendance, but cannot create or edit anything" />
+
+      <Panel title="Add a coordinator">
+        <form onSubmit={submit} className="grid gap-4 p-5 sm:grid-cols-3">
+          <Input label="Full name" placeholder="e.g. Priya K" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input label="Login email" type="email" placeholder="coordinator@amrita.edu" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input label="Password" placeholder="min 6 characters" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <div className="sm:col-span-3 flex items-center gap-3">
+            <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-5 py-2.5 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark disabled:opacity-60">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Create coordinator
+            </button>
+            {msg && <span className={`text-[12px] font-semibold ${msg.t === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>{msg.m}</span>}
+          </div>
+        </form>
+      </Panel>
+
+      <Panel title="Coordinators" subtitle={`${list.length} active`}>
+        {list.length === 0 ? (
+          <EmptyState icon={ShieldCheck} title="No coordinators yet" hint="Create one above so venue staff can scan passes without full admin access." />
+        ) : (
+          <ul className="divide-y divide-amrita-lineSoft">
+            {list.map((c) => (
+              <li key={c.id} className="flex items-center gap-3 px-5 py-4">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amrita-maroonSoft text-amrita-maroon"><ShieldCheck className="h-4 w-4" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-semibold text-amrita-ink">{c.name}</p>
+                  <p className="truncate font-mono text-[11px] text-amrita-muted">{c.email}</p>
+                </div>
+                {confirmDel === c.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => remove(c.id)} className="rounded-lg bg-red-600 px-3 py-2 text-[11px] font-semibold text-white hover:bg-red-700">Remove</button>
+                    <button onClick={() => setConfirmDel(null)} className="rounded-lg bg-amrita-panel px-3 py-2 text-[11px] font-semibold text-amrita-slate">Keep</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDel(c.id)} className="grid h-9 w-9 place-items-center rounded-lg border border-amrita-line text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
 export default function AdminDashboardView({ setView }) {
   const { user, events, registrations, leaderboard, addEvent, updateEvent, deleteEvent, logout } = useData();
   const [tab, setTab] = useState('overview');
@@ -627,7 +711,15 @@ export default function AdminDashboardView({ setView }) {
   const [confirmDel, setConfirmDel] = useState(null);
   const [q, setQ] = useState('');
 
-  if (!user || user.role !== 'admin') {
+  // NOTE: all hooks must run before any early return — otherwise signing out
+  // (user → null) changes the hook count and crashes the tree to a blank page.
+  const filteredRegs = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return registrations;
+    return registrations.filter((r) => [r.studentName, r.registerNum, r.eventTitle, r.email].some((x) => String(x || '').toLowerCase().includes(s)));
+  }, [registrations, q]);
+
+  if (!user || (user.role !== 'admin' && user.role !== 'coordinator')) {
     return (
       <div className="grid min-h-[70vh] place-items-center bg-amrita-canvas px-5">
         <div className="text-center">
@@ -639,14 +731,10 @@ export default function AdminDashboardView({ setView }) {
     );
   }
 
+  const isCoordinator = user.role === 'coordinator';
   const totalAttended = registrations.filter((r) => r.attended || r.attendance === 'present').length;
   const openEvents = events.filter((e) => e.status === 'Open').length;
   const board = [...leaderboard].sort((a, b) => b.points - a.points);
-  const filteredRegs = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return registrations;
-    return registrations.filter((r) => [r.studentName, r.registerNum, r.eventTitle, r.email].some((x) => String(x || '').toLowerCase().includes(s)));
-  }, [registrations, q]);
 
   const saveEvent = (data) => { editTarget ? updateEvent(editTarget.id, data) : addEvent(data); setShowForm(false); setEditTarget(null); };
   const startEdit = (ev) => { setEditTarget(ev); setShowForm(true); setTab('events'); };
@@ -661,15 +749,24 @@ export default function AdminDashboardView({ setView }) {
     document.body.appendChild(a); a.click(); a.remove();
   };
 
-  const nav = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'events', label: 'Events', icon: CalendarDays, badge: events.length },
-    { id: 'registrations', label: 'Registrations', icon: Users, badge: registrations.length || undefined },
-    { id: 'verify', label: 'Verification', icon: ScanLine },
-    { id: 'classes', label: 'Class Forms', icon: ClipboardList },
-    { id: 'rewards', label: 'Rewards', icon: Award },
-    { id: 'announcements', label: 'Announcements', icon: Megaphone },
-  ];
+  // Venue coordinators get a restricted console: view registrations + scan
+  // attendance only. No create/edit/delete of any kind.
+  const nav = isCoordinator
+    ? [
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'registrations', label: 'Registrations', icon: Users, badge: registrations.length || undefined },
+        { id: 'verify', label: 'Verification', icon: ScanLine },
+      ]
+    : [
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'events', label: 'Events', icon: CalendarDays, badge: events.length },
+        { id: 'registrations', label: 'Registrations', icon: Users, badge: registrations.length || undefined },
+        { id: 'verify', label: 'Verification', icon: ScanLine },
+        { id: 'classes', label: 'Class Forms', icon: ClipboardList },
+        { id: 'rewards', label: 'Rewards', icon: Award },
+        { id: 'staff', label: 'Staff Coordinators', icon: ShieldCheck },
+        { id: 'announcements', label: 'Announcements', icon: Megaphone },
+      ];
 
   return (
     <div className="min-h-screen bg-amrita-canvas">
@@ -682,11 +779,11 @@ export default function AdminDashboardView({ setView }) {
               <div className="relative flex items-center gap-2.5">
                 <img src="/amrita-emblem.svg" alt="" className="h-8 w-8" style={{ filter: 'brightness(0) invert(1)' }} />
                 <div>
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/55">Operations Console</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/55">{isCoordinator ? 'Attendance Desk' : 'Operations Console'}</p>
                   <p className="text-[13px] font-bold">IGNITE 2026</p>
                 </div>
               </div>
-              <p className="relative mt-4 text-[11.5px] text-white/70">{user.name}</p>
+              <p className="relative mt-4 text-[11.5px] text-white/70">{user.name}{isCoordinator ? ' · Venue Coordinator' : ''}</p>
             </div>
 
             <nav className="rounded-2xl border border-amrita-line bg-white p-2 shadow-xs">
@@ -715,9 +812,9 @@ export default function AdminDashboardView({ setView }) {
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-3">
-                    <QuickAction icon={Plus} title="Create event" hint="Publish a new program" onClick={() => { setEditTarget(null); setShowForm(true); setTab('events'); }} />
+                    {!isCoordinator && <QuickAction icon={Plus} title="Create event" hint="Publish a new program" onClick={() => { setEditTarget(null); setShowForm(true); setTab('events'); }} />}
                     <QuickAction icon={ScanLine} title="Verify entry" hint="Scan attendance passes" onClick={() => setTab('verify')} />
-                    <QuickAction icon={Megaphone} title="Broadcast" hint="Publish a notice" onClick={() => setTab('announcements')} />
+                    {!isCoordinator && <QuickAction icon={Megaphone} title="Broadcast" hint="Publish a notice" onClick={() => setTab('announcements')} />}
                   </div>
 
                   <Panel title="Department standings" action={<Trophy className="h-4 w-4 text-amrita-maroon" />} bodyClass="divide-y divide-amrita-lineSoft">
@@ -810,6 +907,7 @@ export default function AdminDashboardView({ setView }) {
               {tab === 'verify' && <Verification />}
               {tab === 'classes' && <ClassAttendance />}
               {tab === 'rewards' && <TopStudents />}
+              {tab === 'staff' && <StaffCoordinators />}
               {tab === 'announcements' && <Announcements />}
             </motion.div>
           </AnimatePresence>
