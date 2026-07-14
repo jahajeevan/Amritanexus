@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { adminLogin } from '../lib/api.js';
 import { createAccount, authenticate, accountExists } from '../lib/accounts.js';
 import { loadCatalog, fetchRegistrations, apiRegister, apiAdmin } from '../lib/backend.js';
+import { supabase, isSupabaseReady } from '../lib/supabaseClient.js';
 
 const DataContext = createContext();
 
@@ -87,6 +88,42 @@ export function DataProvider({ children }) {
   useEffect(() => { if (!booted.current) { booted.current = true; refreshCatalog(); } }, []);
   // Reload the right registrations whenever the signed-in identity changes.
   useEffect(() => { refreshRegistrations(user); /* eslint-disable-next-line */ }, [user?.email, user?.role, user?.adminToken]);
+
+  // ── Live cross-device sync ─────────────────────────────────────────
+  // `events` + `departments` + `announcements` are Realtime-published. A
+  // registration or attendance scan on ANY device updates those public tables,
+  // which pushes to every signed-in client here — each one then re-pulls the
+  // (server-only, PII) registrations for its own user. So a student registering
+  // on one phone shows up on every admin screen within a second, with no manual
+  // refresh and without ever exposing registration data to the browser.
+  // Window focus + a slow interval are backstops if the socket drops.
+  useEffect(() => {
+    let debounce;
+    const sync = () => { clearTimeout(debounce); debounce = setTimeout(() => { refreshCatalog(); refreshRegistrations(user); }, 300); };
+
+    let channel;
+    if (isSupabaseReady && supabase) {
+      channel = supabase
+        .channel('nexus-live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, sync)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, sync)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, sync)
+        .subscribe();
+    }
+    const onVisible = () => { if (!document.hidden) sync(); };
+    window.addEventListener('focus', sync);
+    document.addEventListener('visibilitychange', onVisible);
+    const poll = user ? setInterval(sync, 20000) : null; // backstop while signed in
+
+    return () => {
+      clearTimeout(debounce);
+      if (channel && supabase) supabase.removeChannel(channel);
+      window.removeEventListener('focus', sync);
+      document.removeEventListener('visibilitychange', onVisible);
+      if (poll) clearInterval(poll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.email, user?.role, user?.adminToken]);
 
   // ── Auth ───────────────────────────────────────────────────────────
   const signInStudent = (email, registerNum) => {
