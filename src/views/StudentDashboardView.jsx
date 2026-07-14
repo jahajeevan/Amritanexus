@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
 import QRCodePass from '../components/QRCodePass';
 import { StatCard, Panel, Badge, EmptyState, NavItem } from '../components/ui';
+import { normalizeDept, deptLabel } from '../lib/departments';
 import {
   Ticket, Trophy, Award, User, LogOut, CheckCircle2, ChevronRight, Printer,
   LayoutDashboard, IdCard, ArrowRight, Bell, X, QrCode, CalendarCheck, MapPin, Mail, Phone, ShieldCheck,
@@ -120,7 +121,8 @@ export default function StudentDashboardView({ setView }) {
     return s + ((r.attended || r.attendance === 'present') ? (ev?.points || 50) : 0);
   }, 0);
   const board = [...leaderboard].sort((a, b) => b.points - a.points);
-  const myRankIdx = board.findIndex((l) => l.dept?.toLowerCase() === user.department?.toLowerCase() || (user.department?.toLowerCase().includes('computer') && l.dept?.toLowerCase() === 'cse'));
+  const myDeptCode = normalizeDept(user.department);
+  const myRankIdx = board.findIndex((l) => normalizeDept(l.dept) === myDeptCode);
   const myRank = myRankIdx !== -1 ? myRankIdx + 1 : '—';
   const initials = (user.name || 'S').split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase();
 
@@ -147,8 +149,9 @@ export default function StudentDashboardView({ setView }) {
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <Badge tone="maroon">{user.department}</Badge>
+                <Badge tone="maroon">{deptLabel(user.department)}</Badge>
                 <Badge>Year {user.year}</Badge>
+                {user.section && <Badge>Sec {user.section}</Badge>}
               </div>
             </div>
 
@@ -301,7 +304,7 @@ export default function StudentDashboardView({ setView }) {
                   <SectionHead title="Department standings" sub="Credits accrue from verified check-ins" />
                   <Panel bodyClass="divide-y divide-amrita-lineSoft">
                     {board.map((d, i) => {
-                      const mine = i + 1 === myRank;
+                      const mine = i === myRankIdx;
                       return (
                         <div key={d.dept} className={`flex items-center gap-4 px-5 py-4 ${mine ? 'bg-amrita-maroonSoft/50' : ''}`}>
                           <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[13px] font-bold ${i === 0 ? 'bg-amrita-maroon text-white' : 'bg-amrita-panel text-amrita-slate'}`}>{i + 1}</span>
@@ -331,8 +334,8 @@ export default function StudentDashboardView({ setView }) {
                         { icon: User, k: 'Full name', v: user.name },
                         { icon: Mail, k: 'University email', v: user.email },
                         { icon: IdCard, k: 'Register number', v: user.rollNo || user.registerNum },
-                        { icon: LayoutDashboard, k: 'Department', v: user.department },
-                        { icon: CalendarCheck, k: 'Academic year', v: `Year ${user.year}` },
+                        { icon: LayoutDashboard, k: 'Department', v: deptLabel(user.department) },
+                        { icon: CalendarCheck, k: 'Academic year', v: `Year ${user.year}${user.section ? ` · Section ${user.section}` : ''}` },
                         { icon: Phone, k: 'Phone', v: user.phone || '—' },
                       ].map((row) => (
                         <div key={row.k} className="flex items-center gap-3 px-5 py-4">

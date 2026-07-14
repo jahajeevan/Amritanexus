@@ -79,8 +79,8 @@ export async function accountExists(email) {
   return Boolean(findLocalByEmail(email)); // offline / dev fallback
 }
 
-export async function createAccount({ name, email, registerNum, phone, password, year, section }) {
-  const server = await apiStudentSignup({ name, email, registerNum, phone, password, year, section });
+export async function createAccount({ name, email, registerNum, phone, password, department, year, section }) {
+  const server = await apiStudentSignup({ name, email, registerNum, phone, password, department, year, section });
   if (server) {
     if (server.success) {
       cacheProfile(server.profile);
@@ -99,7 +99,7 @@ export async function createAccount({ name, email, registerNum, phone, password,
     email: e,
     registerNum: registerNum.toUpperCase().trim(),
     phone: (phone || '').trim(),
-    department: guessDepartment(registerNum),
+    department: department || guessDepartment(registerNum),
     year: year || 'III',
     section: section || null,
     salt,

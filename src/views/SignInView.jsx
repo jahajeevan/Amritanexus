@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { sendOtp, verifyOtp } from '../lib/api';
-import { YEARS, SECTIONS } from '../lib/departments';
+import { DEPARTMENTS, YEARS, SECTIONS } from '../lib/departments';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Logo from '../components/Logo';
@@ -103,6 +103,7 @@ export default function SignInView({ setView }) {
   const [email, setEmail] = useState('');
   const [regNo, setRegNo] = useState('');
   const [phone, setPhone] = useState('');
+  const [dept, setDept] = useState('');
   const [year, setYear] = useState('');
   const [section, setSection] = useState('');
   const [password, setPassword] = useState('');
@@ -119,7 +120,7 @@ export default function SignInView({ setView }) {
   const resetMessages = () => { setError(''); setNotice(''); };
   const switchMode = (m) => {
     setMode(m); setStep('form'); resetMessages();
-    setOtp(''); setOtpToken(''); setDevCode(''); setPassword(''); setConfirm(''); setYear(''); setSection('');
+    setOtp(''); setOtpToken(''); setDevCode(''); setPassword(''); setConfirm(''); setDept(''); setYear(''); setSection('');
   };
 
   useEffect(() => {
@@ -179,6 +180,7 @@ export default function SignInView({ setView }) {
     if (!EMAIL_RE.test(email)) return setError('Enter a valid email address.');
     if (!isStudentEmail(email)) return setError('Only official @cb.students.amrita.edu student emails are accepted.');
     if (regNo.trim().length < 5) return setError('Enter your university register number.');
+    if (!dept) return setError('Select your department.');
     if (!year) return setError('Select your current year of study.');
     if (!section) return setError('Select your class section.');
     if (phone && !/^\d{10}$/.test(phone.trim())) return setError('Phone must be 10 digits (or leave it blank).');
@@ -215,7 +217,7 @@ export default function SignInView({ setView }) {
     setLoading(true);
     const v = await verifyOtp({ email, otp, token: otpToken });
     if (!v.ok) { setLoading(false); return setError(v.error || 'Incorrect code.'); }
-    const res = await registerStudent({ name, email, registerNum: regNo, phone, password, year, section });
+    const res = await registerStudent({ name, email, registerNum: regNo, phone, password, department: dept, year, section });
     setLoading(false);
     if (res.success) setView('dashboard');
     else { setError(res.message || 'Could not create account.'); setStep('form'); }
@@ -379,6 +381,8 @@ export default function SignInView({ setView }) {
                     <Input label="Register No." placeholder="CB.EN.U4CSE23001" icon={IdCard} value={regNo} onChange={(e) => setRegNo(e.target.value)} required />
                     <Input label="Phone (optional)" placeholder="9446001234" icon={Phone} value={phone} onChange={(e) => setPhone(e.target.value)} />
                   </div>
+                  <SelectField label="Department" icon={GraduationCap} value={dept} onChange={setDept} placeholder="Select your department"
+                    options={DEPARTMENTS.map((d) => ({ value: d.code, label: d.label }))} />
                   <div className="grid grid-cols-2 gap-3">
                     <SelectField label="Year of Study" icon={GraduationCap} value={year} onChange={setYear} placeholder="Select year"
                       options={YEARS.map((y) => ({ value: y, label: `Year ${y}` }))} />

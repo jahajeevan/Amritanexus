@@ -6,7 +6,7 @@ import { StatCard, Panel, Badge, EmptyState, NavItem } from '../components/ui';
 import {
   LayoutDashboard, CalendarDays, Users, ScanLine, Megaphone, Plus, Edit3, Trash2, Save, X,
   FileSpreadsheet, CheckCircle2, XCircle, Search, ShieldCheck, LogOut, Loader2, AlertCircle,
-  ChevronRight, Trophy, Bell, ArrowRight, Camera, CameraOff, Keyboard, ClipboardList, Printer, Download, GraduationCap,
+  ChevronRight, Trophy, Bell, ArrowRight, Camera, CameraOff, Keyboard, ClipboardList, Printer, Download, GraduationCap, Award, Medal,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DEPARTMENTS, SECTIONS, YEARS, normalizeDept, deptLabel } from '../lib/departments';
@@ -86,15 +86,20 @@ function Verification() {
   const lastHitRef = useRef(0);
   const checkedToday = registrations.filter((r) => r.attended || r.attendance === 'present');
 
-  const evaluate = (raw) => {
-    const id = String(raw).trim().toUpperCase();
-    const reg = registrations.find((r) => (r.ticketId || '').toUpperCase() === id || (r.id || '').toUpperCase() === id);
-    const ev = reg && events.find((e) => e.id === reg.eventId);
+  // Server-first: mark attendance straight against the database (the source of
+  // truth) so a valid pass is never wrongly rejected because this device's local
+  // registration list is stale/empty. Falls back to the local list only for the
+  // display name when the server response omits it.
+  const evaluate = async (raw) => {
+    const code = String(raw).trim();
     const at = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (!reg) return setResult({ state: 'invalid', code: id, at, msg: 'No pass matches this code.' });
-    if (reg.attended || reg.attendance === 'present') return setResult({ state: 'duplicate', reg, ev, at, msg: 'This pass is already checked in.' });
-    markAttendance(reg.id);
-    setResult({ state: 'valid', reg, ev, at, msg: 'Attendance recorded · credits awarded to the department.' });
+    setResult({ state: 'checking', code, at, msg: 'Verifying pass…' });
+    const res = await markAttendance(code);
+    const reg = res?.registration || registrations.find((r) => (r.ticketId || '').toUpperCase() === code.toUpperCase() || (r.id || '').toUpperCase() === code.toUpperCase());
+    const ev = reg && events.find((e) => e.id === reg.eventId);
+    if (!res?.success) return setResult({ state: 'invalid', code, at, msg: res?.message || 'No pass matches this code.' });
+    if (res.already) return setResult({ state: 'duplicate', reg, ev, at, msg: res.message || 'This pass is already checked in.' });
+    setResult({ state: 'valid', reg, ev, at, msg: res.message || 'Attendance recorded · credits awarded.' });
   };
   // keep the scan loop calling the latest evaluate (avoids stale closure)
   const evalRef = useRef(evaluate);
@@ -149,10 +154,10 @@ function Verification() {
   }, [camOn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rc = result?.state;
-  const ResIcon = rc === 'valid' ? CheckCircle2 : rc === 'duplicate' ? AlertCircle : XCircle;
-  const resBox = rc === 'valid' ? 'border-emerald-200 bg-emerald-50' : rc === 'duplicate' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50';
-  const resText = rc === 'valid' ? 'text-emerald-800' : rc === 'duplicate' ? 'text-amber-800' : 'text-red-800';
-  const resIcon = rc === 'valid' ? 'text-emerald-600' : rc === 'duplicate' ? 'text-amber-600' : 'text-red-600';
+  const ResIcon = rc === 'valid' ? CheckCircle2 : rc === 'duplicate' ? AlertCircle : rc === 'checking' ? Loader2 : XCircle;
+  const resBox = rc === 'valid' ? 'border-emerald-200 bg-emerald-50' : rc === 'duplicate' ? 'border-amber-200 bg-amber-50' : rc === 'checking' ? 'border-amrita-line bg-amrita-panel' : 'border-red-200 bg-red-50';
+  const resText = rc === 'valid' ? 'text-emerald-800' : rc === 'duplicate' ? 'text-amber-800' : rc === 'checking' ? 'text-amrita-ink' : 'text-red-800';
+  const resIcon = rc === 'valid' ? 'text-emerald-600' : rc === 'duplicate' ? 'text-amber-600' : rc === 'checking' ? 'text-amrita-maroon animate-spin' : 'text-red-600';
 
   return (
     <div className="space-y-6">
@@ -216,7 +221,7 @@ function Verification() {
               <div className="flex items-center gap-3">
                 <ResIcon className={`h-6 w-6 shrink-0 ${resIcon}`} />
                 <div>
-                  <p className={`text-[14px] font-bold ${resText}`}>{rc === 'valid' ? 'Access granted' : rc === 'duplicate' ? 'Already checked in' : 'Rejected'}</p>
+                  <p className={`text-[14px] font-bold ${resText}`}>{rc === 'valid' ? 'Access granted' : rc === 'duplicate' ? 'Already checked in' : rc === 'checking' ? 'Verifying…' : 'Rejected'}</p>
                   <p className="text-[11px] text-amrita-muted">Verified at {result.at}</p>
                 </div>
               </div>
@@ -515,6 +520,105 @@ function ClassAttendance() {
   );
 }
 
+/* ── Rewards — rank students by earned credits, filterable by department ── */
+function TopStudents() {
+  const { registrations, events } = useData();
+  const [dept, setDept] = useState('all');
+  const [year, setYear] = useState('all');
+
+  const pointsOf = (eventId) => {
+    const ev = events.find((e) => e.id === eventId);
+    return Number.isFinite(Number(ev?.points)) ? Number(ev.points) : 50;
+  };
+
+  // Aggregate credits per student (only verified check-ins earn credits).
+  const students = useMemo(() => {
+    const map = new Map();
+    for (const r of registrations) {
+      if (r.status === 'Cancelled') continue;
+      const key = String(r.registerNum || r.email || r.id).toUpperCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          key, name: r.studentName || r.name, registerNum: r.registerNum,
+          deptCode: normalizeDept(r.department), department: r.department,
+          year: r.year, section: r.section, credits: 0, attended: 0, registered: 0,
+        });
+      }
+      const s = map.get(key);
+      s.registered += 1;
+      if (r.attended || r.attendance === 'present') { s.attended += 1; s.credits += pointsOf(r.eventId); }
+    }
+    return [...map.values()]
+      .filter((s) => dept === 'all' || s.deptCode === dept)
+      .filter((s) => year === 'all' || String(s.year || '') === year)
+      .sort((a, b) => b.credits - a.credits || b.attended - a.attended);
+  }, [registrations, events, dept, year]);
+
+  const exportRanking = () => {
+    const headers = ['Rank', 'Student', 'Register No', 'Department', 'Year', 'Section', 'Events attended', 'Credits'];
+    const rows = students.map((s, i) => [i + 1, s.name, s.registerNum, deptLabel(s.deptCode) || s.department, s.year || '', s.section || '', s.attended, s.credits]);
+    const csv = [headers, ...rows].map((row) => row.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `rewards_${dept === 'all' ? 'all-departments' : dept.replace(/\s+/g, '-').toLowerCase()}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const medal = ['text-amber-500', 'text-slate-400', 'text-amber-700'];
+
+  return (
+    <div className="space-y-6">
+      <SectionHead title="Rewards & top performers" sub="Students ranked by credits earned from verified attendance — pick the winners to reward per department" />
+
+      <Panel>
+        <div className="grid gap-3 p-5 sm:grid-cols-3">
+          <Field label="Department"><select value={dept} onChange={(e) => setDept(e.target.value)} className={selectCls}><option value="all">All departments</option>{DEPARTMENTS.map((d) => <option key={d.code} value={d.code}>{d.label}</option>)}</select></Field>
+          <Field label="Year"><select value={year} onChange={(e) => setYear(e.target.value)} className={selectCls}><option value="all">All years</option>{YEARS.map((y) => <option key={y} value={y}>Year {y}</option>)}</select></Field>
+          <div className="flex items-end">
+            <button onClick={exportRanking} disabled={!students.length} className="inline-flex items-center gap-2 rounded-xl border border-amrita-line bg-white px-4 py-2.5 text-[12px] font-semibold text-amrita-ink hover:border-amrita-maroon hover:text-amrita-maroon disabled:opacity-50">
+              <Download className="h-4 w-4" /> Export ranking
+            </button>
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title={dept === 'all' ? 'All departments' : deptLabel(dept)} subtitle={`${students.length} student${students.length === 1 ? '' : 's'} · ranked by credits`} bodyClass="overflow-x-auto">
+        {students.length === 0 ? (
+          <EmptyState icon={Award} title="No credits earned yet" hint="Students appear here once their passes are scanned and attendance is verified." />
+        ) : (
+          <table className="w-full text-left text-[12.5px]">
+            <thead>
+              <tr className="border-b border-amrita-lineSoft text-[10.5px] font-semibold uppercase tracking-wide text-amrita-muted">
+                <th className="px-5 py-3">Rank</th><th className="px-5 py-3">Student</th><th className="px-5 py-3">Register No</th><th className="px-5 py-3">Dept</th><th className="px-5 py-3">Yr/Sec</th><th className="px-5 py-3 text-center">Events</th><th className="px-5 py-3 text-right">Credits</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-amrita-lineSoft">
+              {students.map((s, i) => (
+                <tr key={s.key} className={`hover:bg-amrita-canvas ${i < 3 ? 'bg-amrita-maroonSoft/30' : ''}`}>
+                  <td className="px-5 py-3">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-amrita-ink">
+                      {i < 3 ? <Medal className={`h-4 w-4 ${medal[i]}`} /> : <span className="w-4 text-center text-amrita-muted">{i + 1}</span>}
+                      {i < 3 ? i + 1 : ''}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 font-semibold text-amrita-ink">{s.name}</td>
+                  <td className="px-5 py-3 font-mono text-amrita-slate">{s.registerNum}</td>
+                  <td className="px-5 py-3 text-amrita-slate">{s.deptCode || s.department || '—'}</td>
+                  <td className="px-5 py-3 text-amrita-slate">{s.year || '—'}{s.section ? ` · ${s.section}` : ''}</td>
+                  <td className="px-5 py-3 text-center text-amrita-slate">{s.attended}<span className="text-amrita-faint">/{s.registered}</span></td>
+                  <td className="px-5 py-3 text-right font-bold text-amrita-maroon">{s.credits.toLocaleString('en-IN')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
 export default function AdminDashboardView({ setView }) {
   const { user, events, registrations, leaderboard, addEvent, updateEvent, deleteEvent, logout } = useData();
   const [tab, setTab] = useState('overview');
@@ -563,6 +667,7 @@ export default function AdminDashboardView({ setView }) {
     { id: 'registrations', label: 'Registrations', icon: Users, badge: registrations.length || undefined },
     { id: 'verify', label: 'Verification', icon: ScanLine },
     { id: 'classes', label: 'Class Forms', icon: ClipboardList },
+    { id: 'rewards', label: 'Rewards', icon: Award },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
   ];
 
@@ -704,6 +809,7 @@ export default function AdminDashboardView({ setView }) {
 
               {tab === 'verify' && <Verification />}
               {tab === 'classes' && <ClassAttendance />}
+              {tab === 'rewards' && <TopStudents />}
               {tab === 'announcements' && <Announcements />}
             </motion.div>
           </AnimatePresence>

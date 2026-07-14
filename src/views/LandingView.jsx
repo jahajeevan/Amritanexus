@@ -606,8 +606,8 @@ export default function LandingView({ setView }) {
             verified co-curricular record.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button onClick={() => setView('signin')} variant="primary" className="h-11 bg-white px-6 text-[13px] text-amrita-ink hover:bg-white/90" icon={ArrowRight}>
-              Get your entry pass
+            <Button onClick={() => setView(user ? 'dashboard' : 'signin')} variant="secondary" className="h-11 px-6 text-[13px]" icon={ArrowRight}>
+              {user ? 'Go to my dashboard' : 'Get your entry pass'}
             </Button>
             <Button onClick={() => setView('events')} variant="outline" className="h-11 border-white/25 px-6 text-[13px] text-white hover:border-white hover:text-white hover:bg-white/10">
               Browse events

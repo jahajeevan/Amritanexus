@@ -199,7 +199,7 @@ export function DataProvider({ children }) {
     const reg = registrations.find((r) => r.id === regId || r.ticketId === regId);
     if (!reg) return { success: false, message: 'Ticket code does not match database.' };
     if (reg.status === 'Cancelled') return { success: false, message: 'This ticket registration is Cancelled.' };
-    if (reg.attended || reg.attendance === 'present') return { success: true, message: 'Student is already checked in.', registration: reg };
+    if (reg.attended || reg.attendance === 'present') return { success: true, already: true, message: 'Student is already checked in.', registration: reg };
     const ev = events.find((e) => e.id === reg.eventId);
     const credits = Number(ev?.points) || 50;
     setRegistrations((prev) => prev.map((r) => (r.id === reg.id ? { ...r, attendance: 'present', attended: true } : r)));
@@ -216,7 +216,10 @@ export function DataProvider({ children }) {
   const verifyAttendance = async (regId) => {
     const r = await adminAction('markAttendance', { id: regId, ticketId: regId });
     if (r) {
-      if (r.success) { await refreshCatalog(); await refreshRegistrations(); return { success: true, message: r.already ? 'Student is already checked in.' : 'Attendance recorded successfully!', registration: r.registration }; }
+      if (r.success) {
+        await refreshCatalog(); await refreshRegistrations();
+        return { success: true, already: Boolean(r.already), message: r.already ? 'Student is already checked in.' : `Attendance recorded${r.credits != null ? ` · +${r.credits} credits` : ''}.`, registration: r.registration };
+      }
       return { success: false, message: r.message };
     }
     return verifyAttendanceLocal(regId);

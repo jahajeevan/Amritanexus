@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     }
 
     if (action === 'signup') {
-      const { name, registerNum, phone, password, year, section } = body;
+      const { name, registerNum, phone, password, department, year, section } = body;
       if (!email.endsWith(STUDENT_DOMAIN)) {
         return res.status(400).json({ success: false, message: 'Only official @cb.students.amrita.edu student emails are accepted.' });
       }
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
         email,
         register_num: String(registerNum || '').toUpperCase().trim(),
         phone: String(phone || '').trim(),
-        department: guessDepartment(registerNum),
+        department: department || guessDepartment(registerNum), // student-selected takes precedence
         year: year || 'III',
         section: section || null,
         salt,
