@@ -3,10 +3,11 @@ import { jsPDF } from 'jspdf';
 import { useData } from '../context/DataContext';
 import QRCodePass from '../components/QRCodePass';
 import { StatCard, Panel, Badge, EmptyState, NavItem } from '../components/ui';
-import { normalizeDept, deptLabel } from '../lib/departments';
+import { DEPARTMENTS, YEARS, SECTIONS, normalizeDept, deptLabel } from '../lib/departments';
 import {
   Ticket, Trophy, Award, User, LogOut, CheckCircle2, ChevronRight, Printer, Download,
   LayoutDashboard, IdCard, ArrowRight, Bell, X, QrCode, CalendarCheck, MapPin, Mail, Phone, ShieldCheck,
+  Pencil, Save, Loader2, GraduationCap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -146,14 +147,28 @@ function Row({ k, v, mono, last }) {
   );
 }
 
+const pselect = 'h-10 w-full rounded-xl border border-amrita-line bg-white px-3 text-[13px] font-medium text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10';
+
+function ProfileField({ icon: Icon, label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amrita-muted"><Icon className="h-3.5 w-3.5" /> {label}</span>
+      {children}
+    </label>
+  );
+}
+
 const passTone = (r) => (r.attended || r.attendance === 'present') ? 'success' : r.status === 'Cancelled' ? 'danger' : 'maroon';
 const passLabel = (r) => (r.attended || r.attendance === 'present') ? 'Checked in' : r.status === 'Cancelled' ? 'Cancelled' : 'Active';
 
 export default function StudentDashboardView({ setView }) {
-  const { user, logout, registrations, events, leaderboard, announcements } = useData();
+  const { user, logout, registrations, events, leaderboard, announcements, updateProfile } = useData();
   const [tab, setTab] = useState('overview');
   const [activePass, setActivePass] = useState(null);
   const [cert, setCert] = useState(null);
+  const [pform, setPform] = useState(null); // profile edit draft (null = not editing)
+  const [psaving, setPsaving] = useState(false);
+  const [pmsg, setPmsg] = useState('');
 
   if (!user) {
     return (
@@ -180,6 +195,17 @@ export default function StudentDashboardView({ setView }) {
   const myRankIdx = board.findIndex((l) => normalizeDept(l.dept) === myDeptCode);
   const myRank = myRankIdx !== -1 ? myRankIdx + 1 : '—';
   const initials = (user.name || 'S').split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase();
+
+  const startProfileEdit = () => {
+    setPmsg('');
+    setPform({ department: normalizeDept(user.department) || 'CSE', year: user.year || 'III', section: user.section || 'A', phone: user.phone || '' });
+  };
+  const saveProfile = async () => {
+    setPsaving(true);
+    const res = await updateProfile(pform);
+    setPsaving(false);
+    if (res?.success) { setPform(null); setPmsg('Profile updated — applied across all your passes and standings.'); }
+  };
 
   const nav = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -382,16 +408,25 @@ export default function StudentDashboardView({ setView }) {
 
               {tab === 'profile' && (
                 <>
-                  <SectionHead title="Profile" sub="Your permanent student record — used to auto-fill registrations" />
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <SectionHead title="Profile" sub="Edit your department, year, section or phone — changes apply to all your passes and standings" />
+                    {!pform && (
+                      <button onClick={startProfileEdit} className="inline-flex items-center gap-2 rounded-xl border border-amrita-line bg-white px-4 py-2.5 text-[12px] font-semibold text-amrita-ink hover:border-amrita-maroon hover:text-amrita-maroon">
+                        <Pencil className="h-4 w-4" /> Edit profile
+                      </button>
+                    )}
+                  </div>
+                  {pmsg && !pform && (
+                    <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[12px] font-semibold text-emerald-800">
+                      <CheckCircle2 className="h-4 w-4" /> {pmsg}
+                    </div>
+                  )}
                   <Panel>
                     <dl className="divide-y divide-amrita-lineSoft">
                       {[
                         { icon: User, k: 'Full name', v: user.name },
                         { icon: Mail, k: 'University email', v: user.email },
                         { icon: IdCard, k: 'Register number', v: user.rollNo || user.registerNum },
-                        { icon: LayoutDashboard, k: 'Department', v: deptLabel(user.department) },
-                        { icon: CalendarCheck, k: 'Academic year', v: `Year ${user.year}${user.section ? ` · Section ${user.section}` : ''}` },
-                        { icon: Phone, k: 'Phone', v: user.phone || '—' },
                       ].map((row) => (
                         <div key={row.k} className="flex items-center gap-3 px-5 py-4">
                           <span className="grid h-9 w-9 place-items-center rounded-lg bg-amrita-panel text-amrita-muted"><row.icon className="h-4 w-4" /></span>
@@ -401,10 +436,49 @@ export default function StudentDashboardView({ setView }) {
                           </div>
                         </div>
                       ))}
+                      {pform ? (
+                        <div className="grid gap-4 px-5 py-5 sm:grid-cols-2">
+                          <ProfileField icon={GraduationCap} label="Department">
+                            <select value={pform.department} onChange={(e) => setPform({ ...pform, department: e.target.value })} className={pselect}>{DEPARTMENTS.map((d) => <option key={d.code} value={d.code}>{d.label}</option>)}</select>
+                          </ProfileField>
+                          <ProfileField icon={Phone} label="Phone">
+                            <input value={pform.phone} onChange={(e) => setPform({ ...pform, phone: e.target.value })} placeholder="10-digit number" className={pselect} />
+                          </ProfileField>
+                          <ProfileField icon={CalendarCheck} label="Academic year">
+                            <select value={pform.year} onChange={(e) => setPform({ ...pform, year: e.target.value })} className={pselect}>{YEARS.map((y) => <option key={y} value={y}>Year {y}</option>)}</select>
+                          </ProfileField>
+                          <ProfileField icon={LayoutDashboard} label="Class section">
+                            <select value={pform.section} onChange={(e) => setPform({ ...pform, section: e.target.value })} className={pselect}>{SECTIONS.map((s) => <option key={s} value={s}>Section {s}</option>)}</select>
+                          </ProfileField>
+                        </div>
+                      ) : (
+                        [
+                          { icon: GraduationCap, k: 'Department', v: deptLabel(user.department) },
+                          { icon: CalendarCheck, k: 'Academic year', v: `Year ${user.year}${user.section ? ` · Section ${user.section}` : ''}` },
+                          { icon: Phone, k: 'Phone', v: user.phone || '—' },
+                        ].map((row) => (
+                          <div key={row.k} className="flex items-center gap-3 px-5 py-4">
+                            <span className="grid h-9 w-9 place-items-center rounded-lg bg-amrita-panel text-amrita-muted"><row.icon className="h-4 w-4" /></span>
+                            <div className="flex-1">
+                              <p className="text-[11px] font-medium uppercase tracking-wide text-amrita-muted">{row.k}</p>
+                              <p className="text-[13.5px] font-semibold text-amrita-ink">{row.v}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </dl>
-                    <div className="flex items-center gap-2 border-t border-amrita-lineSoft bg-amrita-canvas px-5 py-3 text-[11.5px] text-amrita-muted">
-                      <ShieldCheck className="h-4 w-4 text-amrita-maroon" /> These details are locked. Contact a faculty coordinator to make changes.
-                    </div>
+                    {pform ? (
+                      <div className="flex items-center gap-2.5 border-t border-amrita-lineSoft px-5 py-4">
+                        <button onClick={saveProfile} disabled={psaving} className="inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-5 py-2.5 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark disabled:opacity-60">
+                          {psaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save changes
+                        </button>
+                        <button onClick={() => { setPform(null); setPmsg(''); }} className="inline-flex items-center gap-2 rounded-xl border border-amrita-line px-5 py-2.5 text-[12px] font-semibold text-amrita-slate hover:bg-amrita-panel"><X className="h-4 w-4" /> Cancel</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 border-t border-amrita-lineSoft bg-amrita-canvas px-5 py-3 text-[11.5px] text-amrita-muted">
+                        <ShieldCheck className="h-4 w-4 text-amrita-maroon" /> Editing your department, year or section updates every pass, class form and your leaderboard standing automatically.
+                      </div>
+                    )}
                   </Panel>
                 </>
               )}

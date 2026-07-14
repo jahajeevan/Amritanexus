@@ -82,6 +82,31 @@ export default async function handler(req, res) {
       return res.json({ success: true, profile: toProfile(inserted) });
     }
 
+    if (action === 'update') {
+      // Student edits their own profile. Cascades to their student record AND
+      // every registration they hold, so old + future entries stay consistent
+      // (leaderboard, class forms and rewards all reflect the new details).
+      if (!email) return res.status(400).json({ success: false, message: 'Missing email.' });
+      const patch = {};
+      if (body.name !== undefined) patch.name = String(body.name).trim() || undefined;
+      if (body.department !== undefined) patch.department = body.department || null;
+      if (body.year !== undefined) patch.year = body.year || null;
+      if (body.section !== undefined) patch.section = body.section || null;
+      if (body.phone !== undefined) patch.phone = String(body.phone).trim();
+      Object.keys(patch).forEach((k) => patch[k] === undefined && delete patch[k]);
+      if (!Object.keys(patch).length) return res.status(400).json({ success: false, message: 'Nothing to update.' });
+
+      const { data: student } = await supabaseAdmin.from('students').update(patch).eq('email', email).select().maybeSingle();
+      // Cascade to registrations (name/department/year/section/phone live on each row).
+      const regPatch = { ...patch };
+      await supabaseAdmin.from('registrations').update(regPatch).eq('email', email);
+
+      const profile = student
+        ? toProfile(student)
+        : { email, name: patch.name, department: patch.department, year: patch.year, section: patch.section, phone: patch.phone, role: 'student', registerNum: body.registerNum, rollNo: body.registerNum };
+      return res.json({ success: true, profile });
+    }
+
     if (action === 'login') {
       const { password } = body;
       const { data: acc } = await supabaseAdmin.from('students').select('*').eq('email', email).maybeSingle();

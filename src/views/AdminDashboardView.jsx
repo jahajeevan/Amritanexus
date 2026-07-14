@@ -175,27 +175,59 @@ function Verification() {
         <div className="space-y-5">
           <Panel title="QR scanner" subtitle={camOn ? 'Hold the student’s pass up to the camera' : 'Use the camera to check students in'}>
             <div className="p-5">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-amrita-line bg-amrita-maroonNight">
+              <div className={`relative aspect-square w-full overflow-hidden rounded-2xl border bg-crimson-night shadow-inner transition-colors duration-300 ${
+                rc === 'valid' ? 'border-emerald-400/80' : rc === 'duplicate' ? 'border-amber-400/80' : rc === 'invalid' ? 'border-red-400/80' : 'border-white/10'}`}>
                 <video ref={videoRef} muted playsInline className={`h-full w-full object-cover ${camOn ? '' : 'hidden'}`} />
                 {camOn ? (
                   <>
+                    {/* focus vignette */}
+                    <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 47%, transparent 33%, rgba(9,7,11,0.58) 70%)' }} />
+
+                    {/* reticle + scan beam */}
                     <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                      <div className="relative h-44 w-44">
-                        {['left-0 top-0 border-l-2 border-t-2', 'right-0 top-0 border-r-2 border-t-2', 'left-0 bottom-0 border-l-2 border-b-2', 'right-0 bottom-0 border-r-2 border-b-2'].map((c) => (
-                          <span key={c} className={`absolute h-6 w-6 border-white/90 ${c}`} />
+                      <div className="relative aspect-square w-[62%] max-w-[248px]">
+                        {['left-0 top-0 rounded-tl-lg border-l-2 border-t-2', 'right-0 top-0 rounded-tr-lg border-r-2 border-t-2', 'left-0 bottom-0 rounded-bl-lg border-l-2 border-b-2', 'right-0 bottom-0 rounded-br-lg border-r-2 border-b-2'].map((c) => (
+                          <span key={c} className={`absolute h-7 w-7 border-white ${c}`} style={{ boxShadow: '0 0 12px rgba(255,255,255,0.35)' }} />
                         ))}
-                        <span className="absolute inset-x-0 top-0 h-0.5 animate-scan-line bg-white/80" />
+                        <motion.div className="absolute inset-x-1" animate={{ top: ['4%', '90%', '4%'] }} transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                          style={{ height: 34, background: 'linear-gradient(180deg, transparent, rgba(211,45,80,0.4), transparent)', filter: 'blur(3px)' }} />
+                        <motion.div className="absolute inset-x-0 h-px bg-white" animate={{ top: ['4%', '90%', '4%'] }} transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                          style={{ boxShadow: '0 0 14px 2px rgba(255,90,120,0.85)' }} />
                       </div>
                     </div>
-                    <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-black/45 px-2 py-1 text-[10px] font-semibold text-white">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Scanning
-                    </span>
+
+                    {/* status bar */}
+                    <div className="absolute inset-x-0 top-0 flex items-center justify-between p-3">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                        </span>
+                        Live scanning
+                      </span>
+                      <span className="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-medium text-white/75 backdrop-blur-sm">Auto-detects QR</span>
+                    </div>
+
+                    {/* in-viewport result banner */}
+                    <AnimatePresence>
+                      {result && rc !== 'checking' && (
+                        <motion.div key={result.at} initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }}
+                          className="absolute inset-x-0 bottom-0 flex items-center gap-2.5 bg-gradient-to-t from-black/90 via-black/55 to-transparent px-4 pb-4 pt-9">
+                          <ResIcon className={`h-6 w-6 shrink-0 ${rc === 'valid' ? 'text-emerald-400' : rc === 'duplicate' ? 'text-amber-400' : 'text-red-400'}`} />
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-bold text-white">{rc === 'valid' ? 'Access granted' : rc === 'duplicate' ? 'Already checked in' : 'Not recognised'}</p>
+                            <p className="truncate text-[11px] text-white/70">{result.reg ? (result.reg.studentName || result.reg.name) : result.code}</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </>
                 ) : (
                   <div className="grid h-full w-full place-items-center text-center">
                     <div>
-                      <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-white/10 text-white/80"><Camera className="h-6 w-6" /></span>
-                      <p className="mt-3 text-[12px] font-medium text-white/70">Camera is off</p>
+                      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/10 text-white ring-1 ring-white/15"><ScanLine className="h-7 w-7" /></span>
+                      <p className="mt-4 text-[13px] font-semibold text-white">Ready to scan</p>
+                      <p className="mt-1 text-[11.5px] text-white/55">Start the camera to check students in</p>
                     </div>
                   </div>
                 )}
@@ -552,6 +584,10 @@ function TopStudents() {
         });
       }
       const s = map.get(key);
+      // Fill any gaps from whichever registration carries the detail.
+      if (!s.section && r.section) s.section = r.section;
+      if (!s.year && r.year) s.year = r.year;
+      if (!s.deptCode && normalizeDept(r.department)) s.deptCode = normalizeDept(r.department);
       s.registered += 1;
       if (r.attended || r.attendance === 'present') { s.attended += 1; s.credits += pointsOf(r.eventId); }
     }

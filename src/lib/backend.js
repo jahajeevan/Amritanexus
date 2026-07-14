@@ -58,5 +58,6 @@ export const apiAdmin = (action, payload, token) => post('/api/admin', { action,
 export const apiStudentSignup = (fields) => post('/api/students', { action: 'signup', ...fields });
 export const apiStudentLogin = (email, password) => post('/api/students', { action: 'login', email, password });
 export const apiStudentExists = (email) => post('/api/students', { action: 'exists', email });
+export const apiStudentUpdate = (fields) => post('/api/students', { action: 'update', ...fields });
 
 export const backendReady = isSupabaseReady;

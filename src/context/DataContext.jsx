@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { adminLogin } from '../lib/api.js';
-import { createAccount, authenticate, accountExists } from '../lib/accounts.js';
-import { loadCatalog, fetchRegistrations, apiRegister, apiAdmin } from '../lib/backend.js';
+import { createAccount, authenticate, accountExists, updateLocalAccount } from '../lib/accounts.js';
+import { loadCatalog, fetchRegistrations, apiRegister, apiAdmin, apiStudentUpdate } from '../lib/backend.js';
 import { supabase, isSupabaseReady } from '../lib/supabaseClient.js';
 
 const DataContext = createContext();
@@ -176,6 +176,20 @@ export function DataProvider({ children }) {
   };
 
   const checkAccountExists = (email) => accountExists(email);
+
+  // Student edits their own profile. Updates the local session immediately, then
+  // persists to the server which cascades the change to the student record AND
+  // all their registrations (so old + future entries stay consistent).
+  const updateProfile = async (patch) => {
+    if (!user) return { success: false, message: 'Not signed in.' };
+    const merged = { ...user, ...patch };
+    updateLocalAccount(user.email, patch);
+    setUser(merged);
+    const res = await apiStudentUpdate({ email: user.email, registerNum: user.registerNum, ...patch });
+    await refreshRegistrations(merged);
+    return res && res.success ? { success: true, profile: res.profile } : { success: true, profile: merged };
+  };
+
   const signOut = () => { setUser(null); setRegistrations([]); };
   const logout = signOut;
 
@@ -351,7 +365,7 @@ export function DataProvider({ children }) {
   return (
     <DataContext.Provider value={{
       events, registrations, leaderboard, announcements, user,
-      signInStudent, signInAdmin, registerStudent, loginStudent, checkAccountExists, signOut, logout,
+      signInStudent, signInAdmin, registerStudent, loginStudent, checkAccountExists, updateProfile, signOut, logout,
       registerForEvent, cancelRegistration, verifyAttendance, markAttendance, updateRegistration,
       addEvent, updateEvent, deleteEvent, duplicateEvent, addGalleryPhoto, recruitStudentVolunteer,
       createAnnouncement, addAnnouncement, deleteAnnouncement,

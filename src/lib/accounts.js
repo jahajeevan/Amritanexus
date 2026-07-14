@@ -73,6 +73,15 @@ export function findLocalByEmail(email) {
   return readLocal().find((a) => a.email === e) || null;
 }
 
+// Merge a profile patch into the locally cached account (keeps offline in sync).
+export function updateLocalAccount(email, patch) {
+  const e = String(email).toLowerCase().trim();
+  const list = readLocal();
+  let changed = false;
+  const next = list.map((a) => (a.email === e ? (changed = true, { ...a, ...patch }) : a));
+  if (changed) writeLocal(next);
+}
+
 export async function accountExists(email) {
   const server = await apiStudentExists(email);
   if (server && typeof server.exists === 'boolean') return server.exists;

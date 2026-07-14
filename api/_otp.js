@@ -96,26 +96,30 @@ export async function sendOtpEmail({ to, otp, name }) {
 }
 
 function otpEmailHtml({ otp, hi }) {
-  const digits = otp.split('').map(
-    (d) => `<td style="padding:0 4px;"><div style="width:44px;height:56px;line-height:56px;text-align:center;font-size:26px;font-weight:800;color:#1E1E1E;background:#FAF9F6;border:1px solid #E8D8B5;border-radius:12px;font-family:'Courier New',monospace;">${d}</div></td>`
-  ).join('');
+  // Table + bgcolor based layout so it renders correctly in Outlook (no
+  // gradients, no wide fixed rows). The code is one letter-spaced pill so it
+  // never overflows a narrow phone screen.
   return `
-  <div style="margin:0;padding:32px 16px;background:#F6F3EE;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;">
-    <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #E8D8B5;border-radius:20px;overflow:hidden;box-shadow:0 20px 40px rgba(30,30,30,0.06);">
-      <div style="background:linear-gradient(135deg,#1E1E1E,#3a3320);padding:28px 32px;">
+  <div style="margin:0;padding:24px 12px;background:#F6F3EE;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #E8D8B5;border-radius:16px;overflow:hidden;">
+      <tr><td bgcolor="#1E1E1E" style="background-color:#1E1E1E;padding:22px 28px;">
         <div style="color:#D4AF37;font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">Amrita Nexus</div>
-        <div style="color:#ffffff;font-size:22px;font-weight:800;margin-top:4px;">IGNITE 2026 Verification</div>
-      </div>
-      <div style="padding:32px;">
+        <div style="color:#ffffff;font-size:20px;font-weight:800;margin-top:6px;">IGNITE 2026 Verification</div>
+      </td></tr>
+      <tr><td style="padding:28px;">
         <p style="color:#1E1E1E;font-size:14px;margin:0 0 6px;">${hi}</p>
-        <p style="color:#6B7280;font-size:13px;line-height:1.6;margin:0 0 24px;">Enter this one-time code to verify your email and activate your campus entry pass. It expires in <strong>10 minutes</strong>.</p>
-        <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px;"><tr>${digits}</tr></table>
+        <p style="color:#6B7280;font-size:13px;line-height:1.6;margin:0 0 22px;">Enter this one-time code to verify your email and activate your campus entry pass. It expires in <strong>10 minutes</strong>.</p>
+        <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 22px;">
+          <tr><td bgcolor="#FAF9F6" style="background-color:#FAF9F6;border:1px solid #E8D8B5;border-radius:14px;padding:16px 20px;">
+            <div style="font-family:'Courier New',Courier,monospace;font-size:34px;font-weight:800;letter-spacing:12px;color:#1E1E1E;text-align:center;padding-left:12px;">${otp}</div>
+          </td></tr>
+        </table>
         <p style="color:#9CA3AF;font-size:11px;line-height:1.6;margin:0;text-align:center;">Didn't request this? You can safely ignore this email — no account will be created.</p>
-      </div>
-      <div style="background:#FAF9F6;border-top:1px solid #E8D8B5;padding:16px 32px;text-align:center;">
+      </td></tr>
+      <tr><td bgcolor="#FAF9F6" style="background-color:#FAF9F6;border-top:1px solid #E8D8B5;padding:14px 28px;text-align:center;">
         <span style="color:#B8860B;font-size:10px;font-weight:700;letter-spacing:1px;">© 2026 Amrita Vishwa Vidyapeetham · Coimbatore</span>
-      </div>
-    </div>
+      </td></tr>
+    </table>
   </div>`;
 }
 
