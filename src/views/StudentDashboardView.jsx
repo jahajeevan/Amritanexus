@@ -1,16 +1,66 @@
 import React, { useState } from 'react';
+import { jsPDF } from 'jspdf';
 import { useData } from '../context/DataContext';
 import QRCodePass from '../components/QRCodePass';
 import { StatCard, Panel, Badge, EmptyState, NavItem } from '../components/ui';
 import { normalizeDept, deptLabel } from '../lib/departments';
 import {
-  Ticket, Trophy, Award, User, LogOut, CheckCircle2, ChevronRight, Printer,
+  Ticket, Trophy, Award, User, LogOut, CheckCircle2, ChevronRight, Printer, Download,
   LayoutDashboard, IdCard, ArrowRight, Bell, X, QrCode, CalendarCheck, MapPin, Mail, Phone, ShieldCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* ── Certificate modal (UI shell in the new system; printed cert stays formal serif) ── */
 function CertificateModal({ registration, event, onClose }) {
+  // Generate a real, one-click downloadable PDF certificate (A4 landscape).
+  const downloadPdf = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const W = 297, cx = W / 2;
+    const maroon = [158, 27, 50], ink = [22, 24, 29], muted = [107, 114, 128], line = [231, 232, 235];
+    const center = (t, y) => doc.text(t, cx, y, { align: 'center' });
+    const name = registration.studentName || registration.name || 'Student';
+
+    doc.setDrawColor(maroon[0], maroon[1], maroon[2]); doc.setLineWidth(2.5); doc.rect(10, 10, W - 20, 190);
+    doc.setDrawColor(line[0], line[1], line[2]); doc.setLineWidth(0.4); doc.rect(14, 14, W - 28, 182);
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(ink[0], ink[1], ink[2]);
+    center('AMRITA NEXUS   ·   IGNITE 2026', 38);
+    doc.setFontSize(8.5); doc.setTextColor(maroon[0], maroon[1], maroon[2]);
+    center('VERIFIED DIGITAL CREDENTIAL', 46);
+
+    doc.setFont('times', 'italic'); doc.setFontSize(34); doc.setTextColor(ink[0], ink[1], ink[2]);
+    center('Certificate of Participation', 72);
+    doc.setFontSize(13); doc.setTextColor(muted[0], muted[1], muted[2]);
+    center('This certifies that', 88);
+
+    doc.setFont('times', 'bold'); doc.setFontSize(28); doc.setTextColor(maroon[0], maroon[1], maroon[2]);
+    center(name, 104);
+    const nameW = doc.getTextWidth(name);
+    doc.setDrawColor(line[0], line[1], line[2]); doc.setLineWidth(0.4); doc.line(cx - nameW / 2 - 4, 108, cx + nameW / 2 + 4, 108);
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.setTextColor(ink[0], ink[1], ink[2]);
+    doc.text(doc.splitTextToSize('has registered, checked in and actively participated in the following event of IGNITE 2026.', 190), cx, 122, { align: 'center' });
+
+    doc.setFont('times', 'bold'); doc.setFontSize(19); doc.setTextColor(ink[0], ink[1], ink[2]);
+    center(event?.title || 'Campus Event', 142);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(muted[0], muted[1], muted[2]);
+    center([event?.date, event?.venue].filter(Boolean).join('    ·    '), 151);
+
+    const cat = String(event?.category || 'Academic').toUpperCase();
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    const cw = doc.getTextWidth(cat) + 14;
+    doc.setFillColor(251, 238, 241); doc.setDrawColor(line[0], line[1], line[2]); doc.setLineWidth(0.3);
+    doc.roundedRect(cx - cw / 2, 160, cw, 9, 2, 2, 'FD');
+    doc.setTextColor(maroon[0], maroon[1], maroon[2]); center(cat, 166.2);
+
+    doc.setFont('courier', 'normal'); doc.setFontSize(9); doc.setTextColor(muted[0], muted[1], muted[2]);
+    center(`Verification ID: ${registration.ticketId || registration.id}`, 184);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    center('Issued by the Amrita Campus Event Coordination Board · Coimbatore', 193);
+
+    doc.save(`Certificate-${name.replace(/[^a-z0-9]+/gi, '-')}-IGNITE2026.pdf`);
+  };
+
   const handlePrint = () => {
     const w = window.open('', '_blank');
     w.document.write(`
@@ -74,9 +124,14 @@ function CertificateModal({ registration, event, onClose }) {
             <Row k="Credits" v={`+${event?.points || 50}`} />
             <Row k="Verification ID" v={registration.ticketId} mono last />
           </div>
-          <button onClick={handlePrint} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amrita-maroon py-3 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark">
-            <Printer className="h-4 w-4" /> Print certificate
-          </button>
+          <div className="flex gap-2.5">
+            <button onClick={downloadPdf} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-amrita-maroon py-3 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark">
+              <Download className="h-4 w-4" /> Download PDF
+            </button>
+            <button onClick={handlePrint} className="flex items-center justify-center gap-2 rounded-xl border border-amrita-line px-4 py-3 text-[12px] font-semibold text-amrita-ink hover:border-amrita-maroon hover:text-amrita-maroon">
+              <Printer className="h-4 w-4" /> Print
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
