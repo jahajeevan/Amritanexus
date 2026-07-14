@@ -29,7 +29,10 @@ export default async function handler(req, res) {
   const passOk = safeEqual(String(password || ''), adminPassword);
 
   if (emailOk && passOk) {
-    return res.status(200).json({ ok: true, name: 'Faculty Coordinator', email: adminEmail });
+    // Issue the signed session token the admin replays on every privileged
+    // write/read (/api/admin, /api/registrations). Without this the admin has
+    // no server session and every action falls back to the empty local list.
+    return res.status(200).json({ ok: true, name: 'Faculty Coordinator', email: adminEmail, token: signAdminToken() });
   }
   return res.status(401).json({ ok: false, error: 'Invalid administrative credentials.' });
 }
