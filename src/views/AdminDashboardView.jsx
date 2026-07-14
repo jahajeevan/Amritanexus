@@ -87,11 +87,42 @@ function Verification() {
   const [result, setResult] = useState(null);
   const [camOn, setCamOn] = useState(false);
   const [camError, setCamError] = useState('');
+  const [burst, setBurst] = useState(null); // transient success/verdict flash
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const rafRef = useRef(0);
   const lastHitRef = useRef(0);
+  const audioCtxRef = useRef(null);
+  const burstTimer = useRef(0);
   const checkedToday = registrations.filter((r) => r.attended || r.attendance === 'present');
+
+  // Short synthesised tone (Web Audio) — no asset files needed.
+  const tone = (freq, start, dur, type = 'sine', gain = 0.06) => {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+      const t0 = ctx.currentTime + start;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type; osc.frequency.value = freq;
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(gain, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t0); osc.stop(t0 + dur + 0.03);
+    } catch { /* audio not available */ }
+  };
+  // Fire sound + haptics + a visual burst for a scan verdict.
+  const signal = (kind) => {
+    try { if (navigator.vibrate) navigator.vibrate(kind === 'valid' ? 45 : kind === 'duplicate' ? 25 : [70, 40, 70]); } catch { /* no haptics */ }
+    if (kind === 'valid') { tone(660, 0, 0.13); tone(990, 0.1, 0.2); }
+    else if (kind === 'duplicate') { tone(523, 0, 0.18, 'triangle'); }
+    else { tone(196, 0, 0.26, 'sawtooth', 0.05); }
+    setBurst({ kind, at: Date.now() });
+    clearTimeout(burstTimer.current);
+    burstTimer.current = setTimeout(() => setBurst(null), 1300);
+  };
 
   // Server-first: mark attendance straight against the database (the source of
   // truth) so a valid pass is never wrongly rejected because this device's local
@@ -104,8 +135,9 @@ function Verification() {
     const res = await markAttendance(code);
     const reg = res?.registration || registrations.find((r) => (r.ticketId || '').toUpperCase() === code.toUpperCase() || (r.id || '').toUpperCase() === code.toUpperCase());
     const ev = reg && events.find((e) => e.id === reg.eventId);
-    if (!res?.success) return setResult({ state: 'invalid', code, at, msg: res?.message || 'No pass matches this code.' });
-    if (res.already) return setResult({ state: 'duplicate', reg, ev, at, msg: res.message || 'This pass is already checked in.' });
+    if (!res?.success) { signal('invalid'); return setResult({ state: 'invalid', code, at, msg: res?.message || 'No pass matches this code.' }); }
+    if (res.already) { signal('duplicate'); return setResult({ state: 'duplicate', reg, ev, at, msg: res.message || 'This pass is already checked in.' }); }
+    signal('valid');
     setResult({ state: 'valid', reg, ev, at, msg: res.message || 'Attendance recorded · credits awarded.' });
   };
   // keep the scan loop calling the latest evaluate (avoids stale closure)
@@ -131,7 +163,7 @@ function Verification() {
     }
   };
 
-  useEffect(() => () => stopCam(), []);
+  useEffect(() => () => { stopCam(); clearTimeout(burstTimer.current); }, []);
 
   useEffect(() => {
     if (!camOn) return;
@@ -182,17 +214,29 @@ function Verification() {
                   <>
                     {/* focus vignette */}
                     <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 47%, transparent 33%, rgba(9,7,11,0.58) 70%)' }} />
+                    {/* sensor scanline texture */}
+                    <div className="pointer-events-none absolute inset-0 opacity-20" style={{ backgroundImage: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 3px)' }} />
+                    {/* ambient crimson glows */}
+                    <motion.div className="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full" style={{ background: 'radial-gradient(circle, rgba(163,19,63,0.5), transparent 70%)' }} animate={{ opacity: [0.25, 0.55, 0.25] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }} />
+                    <motion.div className="pointer-events-none absolute -bottom-10 -right-10 h-32 w-32 rounded-full" style={{ background: 'radial-gradient(circle, rgba(163,19,63,0.5), transparent 70%)' }} animate={{ opacity: [0.5, 0.22, 0.5] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }} />
 
                     {/* reticle + scan beam */}
                     <div className="pointer-events-none absolute inset-0 grid place-items-center">
                       <div className="relative aspect-square w-[62%] max-w-[248px]">
-                        {['left-0 top-0 rounded-tl-lg border-l-2 border-t-2', 'right-0 top-0 rounded-tr-lg border-r-2 border-t-2', 'left-0 bottom-0 rounded-bl-lg border-l-2 border-b-2', 'right-0 bottom-0 rounded-br-lg border-r-2 border-b-2'].map((c) => (
-                          <span key={c} className={`absolute h-7 w-7 border-white ${c}`} style={{ boxShadow: '0 0 12px rgba(255,255,255,0.35)' }} />
+                        {['left-0 top-0 rounded-tl-lg border-l-2 border-t-2', 'right-0 top-0 rounded-tr-lg border-r-2 border-t-2', 'left-0 bottom-0 rounded-bl-lg border-l-2 border-b-2', 'right-0 bottom-0 rounded-br-lg border-r-2 border-b-2'].map((c, i) => (
+                          <motion.span key={c} className={`absolute h-7 w-7 border-white ${c}`} style={{ boxShadow: '0 0 12px rgba(255,255,255,0.4)' }}
+                            animate={{ opacity: [0.55, 1, 0.55] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.15 }} />
                         ))}
-                        <motion.div className="absolute inset-x-1" animate={{ top: ['4%', '90%', '4%'] }} transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-                          style={{ height: 34, background: 'linear-gradient(180deg, transparent, rgba(211,45,80,0.4), transparent)', filter: 'blur(3px)' }} />
-                        <motion.div className="absolute inset-x-0 h-px bg-white" animate={{ top: ['4%', '90%', '4%'] }} transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-                          style={{ boxShadow: '0 0 14px 2px rgba(255,90,120,0.85)' }} />
+                        {/* soft glow band */}
+                        <motion.div className="absolute inset-x-1" animate={{ top: ['3%', '91%', '3%'] }} transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                          style={{ height: 42, marginTop: -21, background: 'linear-gradient(180deg, transparent, rgba(230,50,86,0.45), transparent)', filter: 'blur(4px)' }} />
+                        {/* bright line with glowing endpoints */}
+                        <motion.div className="absolute inset-x-0" animate={{ top: ['3%', '91%', '3%'] }} transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}>
+                          <div className="relative h-px w-full bg-white/95" style={{ boxShadow: '0 0 16px 2px rgba(255,90,120,0.9)' }}>
+                            <span className="absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full bg-white" style={{ boxShadow: '0 0 10px 2px rgba(255,90,120,1)' }} />
+                            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-white" style={{ boxShadow: '0 0 10px 2px rgba(255,90,120,1)' }} />
+                          </div>
+                        </motion.div>
                       </div>
                     </div>
 
@@ -207,6 +251,25 @@ function Verification() {
                       </span>
                       <span className="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-medium text-white/75 backdrop-blur-sm">Auto-detects QR</span>
                     </div>
+
+                    {/* verdict burst — expanding rings + spring-in icon */}
+                    <AnimatePresence>
+                      {burst && (
+                        <motion.div key={burst.at} className="pointer-events-none absolute inset-0 grid place-items-center" exit={{ opacity: 0 }}>
+                          {[0, 0.09].map((d, i) => (
+                            <motion.span key={i} initial={{ scale: 0.35, opacity: 0.8 }} animate={{ scale: 2.6, opacity: 0 }} transition={{ duration: 0.85, ease: 'easeOut', delay: d }}
+                              className={`absolute h-24 w-24 rounded-full border-2 ${burst.kind === 'valid' ? 'border-emerald-400' : burst.kind === 'duplicate' ? 'border-amber-400' : 'border-red-400'}`} />
+                          ))}
+                          <motion.span
+                            initial={{ scale: 0, rotate: -20 }}
+                            animate={burst.kind === 'invalid' ? { scale: 1, rotate: 0, x: [0, -7, 7, -5, 5, 0] } : { scale: 1, rotate: 0 }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 15 }}
+                            className={`grid h-16 w-16 place-items-center rounded-full shadow-xl ${burst.kind === 'valid' ? 'bg-emerald-500' : burst.kind === 'duplicate' ? 'bg-amber-500' : 'bg-red-500'}`}>
+                            {burst.kind === 'valid' ? <CheckCircle2 className="h-8 w-8 text-white" /> : burst.kind === 'duplicate' ? <AlertCircle className="h-8 w-8 text-white" /> : <XCircle className="h-8 w-8 text-white" />}
+                          </motion.span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {/* in-viewport result banner */}
                     <AnimatePresence>
@@ -225,7 +288,10 @@ function Verification() {
                 ) : (
                   <div className="grid h-full w-full place-items-center text-center">
                     <div>
-                      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/10 text-white ring-1 ring-white/15"><ScanLine className="h-7 w-7" /></span>
+                      <motion.span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/10 text-white ring-1 ring-white/15"
+                        animate={{ boxShadow: ['0 0 0 0 rgba(255,255,255,0.18)', '0 0 0 14px rgba(255,255,255,0)'] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}>
+                        <ScanLine className="h-8 w-8" />
+                      </motion.span>
                       <p className="mt-4 text-[13px] font-semibold text-white">Ready to scan</p>
                       <p className="mt-1 text-[11.5px] text-white/55">Start the camera to check students in</p>
                     </div>
