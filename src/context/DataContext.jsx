@@ -11,15 +11,17 @@ const initialEvents = [
   { id: 'evt-3', title: 'IGNITE Cultural Night', category: 'Cultural', department: 'ECE', venue: 'Open Stage Ground', mapsLink: 'https://maps.google.com/?q=Amrita+Coimbatore+Sports+Complex', date: '2026-05-18', time: '18:00', maxSeats: 250, seatsFilled: 250, status: 'Closed', coordinator: 'Dr. Saraswathi M (ECE)', volunteers: ['Gokul S', 'Nehal Jain', 'Kavitha P'], description: 'The flagship cultural celebration of IGNITE 2026. Featuring live music performances, dance face-offs, classical recitals, and campus visual arts galleries.', rules: '1. Gates close at 18:30. 2. QR ticket check-in is mandatory. 3. Outside food not permitted.', announcements: [{ id: 'ann-e3-1', title: 'Pass QR Required at Entrance', content: 'Make sure your student pass QR is saved offline. Cellular connectivity might be slow around the ground gate.', date: '2026-05-16', time: '10:00' }], gallery: [{ id: 'gal-e3-1', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=600&q=80', caption: 'Opening performance showcase' }] },
 ];
 
+// Every branch starts at zero — department credits accrue only from real,
+// verified attendance once the platform goes live on campus.
 const initialLeaderboard = [
-  { dept: 'CSE', registrations: 140, checkins: 110, points: 1950 },
-  { dept: 'AI', registrations: 98, checkins: 84, points: 1400 },
-  { dept: 'Cyber Security', registrations: 72, checkins: 56, points: 1000 },
-  { dept: 'ECE', registrations: 88, checkins: 70, points: 1230 },
-  { dept: 'EEE', registrations: 45, checkins: 32, points: 610 },
-  { dept: 'Mechanical', registrations: 54, checkins: 38, points: 730 },
-  { dept: 'Civil', registrations: 32, checkins: 22, points: 430 },
-  { dept: 'MBA', registrations: 60, checkins: 48, points: 840 },
+  { dept: 'CSE', registrations: 0, checkins: 0, points: 0 },
+  { dept: 'AI', registrations: 0, checkins: 0, points: 0 },
+  { dept: 'Cyber Security', registrations: 0, checkins: 0, points: 0 },
+  { dept: 'ECE', registrations: 0, checkins: 0, points: 0 },
+  { dept: 'EEE', registrations: 0, checkins: 0, points: 0 },
+  { dept: 'Mechanical', registrations: 0, checkins: 0, points: 0 },
+  { dept: 'Civil', registrations: 0, checkins: 0, points: 0 },
+  { dept: 'MBA', registrations: 0, checkins: 0, points: 0 },
 ];
 
 const initialAnnouncements = [
@@ -29,8 +31,10 @@ const initialAnnouncements = [
 
 const read = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
 
-// Bump the local leaderboard for a department name (used only in the offline fallback).
-const bumpLocal = (list, name, { reg = 0, chk = 0 }) => {
+// Bump the local leaderboard for a department name (used only in the offline
+// fallback). `pts` is the explicit credit delta — on check-in this is the
+// event's custom credit value, mirroring the server's bumpDepartment.
+const bumpLocal = (list, name, { reg = 0, chk = 0, pts = 0 }) => {
   const dn = String(name || 'Computer Science').toLowerCase();
   const match = (code) => code === dn ||
     (dn.includes('computer') && code === 'cse') || (dn.includes('electronic') && code === 'ece') ||
@@ -39,9 +43,12 @@ const bumpLocal = (list, name, { reg = 0, chk = 0 }) => {
     (dn.includes('cyber') && code === 'cyber security') || (dn.includes('electrical') && code === 'eee');
   return list.map((l) => {
     if (!match((l.dept || '').toLowerCase())) return l;
-    const registrations = Math.max(0, l.registrations + reg);
-    const checkins = Math.max(0, l.checkins + chk);
-    return { ...l, registrations, checkins, points: registrations * 10 + checkins * 50 };
+    return {
+      ...l,
+      registrations: Math.max(0, l.registrations + reg),
+      checkins: Math.max(0, l.checkins + chk),
+      points: Math.max(0, (l.points || 0) + pts),
+    };
   });
 };
 
@@ -94,7 +101,7 @@ export function DataProvider({ children }) {
     else if (cleanReg.includes('ME')) dept = 'Mechanical';
     else if (cleanReg.includes('CE')) dept = 'Civil';
     else if (cleanReg.includes('BA')) dept = 'Management';
-    const profile = { id: `usr-${cleanReg}`, name: name || 'Student Guest', registerNum: cleanReg, rollNo: cleanReg, role: 'student', department: dept, year: 'III', email: cleanEmail, phone: '9446001234' };
+    const profile = { id: `usr-${cleanReg}`, name: name || 'Student Guest', registerNum: cleanReg, rollNo: cleanReg, role: 'student', department: dept, year: 'III', section: null, email: cleanEmail, phone: '9446001234' };
     setUser(profile);
     return { success: true, profile };
   };
@@ -145,7 +152,7 @@ export function DataProvider({ children }) {
     const now = new Date();
     const newReg = {
       id: `reg-${Date.now()}`, ticketId: `TKT-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`,
-      name: sName, studentName: sName, registerNum: sReg, rollNo: sReg, department: studentInfo.department || 'Computer Science', year: studentInfo.year || 'III',
+      name: sName, studentName: sName, registerNum: sReg, rollNo: sReg, department: studentInfo.department || 'Computer Science', year: studentInfo.year || 'III', section: studentInfo.section || null,
       email: studentInfo.email, phone: studentInfo.phone || '', eventId: event.id, eventTitle: event.title, eventCategory: event.category, eventDate: event.date, eventTime: event.time,
       venue: event.venue, registrationDate: now.toISOString().split('T')[0], registrationTime: now.toTimeString().split(' ')[0].slice(0, 5), status: 'Confirmed', attendance: 'absent', attended: false,
     };
@@ -156,7 +163,7 @@ export function DataProvider({ children }) {
       const status = filled >= e.maxSeats ? 'Closed' : filled >= e.maxSeats * 0.9 ? 'Almost Full' : e.status;
       return { ...e, seatsFilled: filled, status };
     }));
-    setLeaderboard((prev) => bumpLocal(prev, studentInfo.department, { reg: 1 }));
+    setLeaderboard((prev) => bumpLocal(prev, studentInfo.department, { reg: 1 })); // credits awarded on check-in, not here
     return { success: true, registration: newReg };
   };
 
@@ -179,7 +186,11 @@ export function DataProvider({ children }) {
     if (!reg) return { success: false, message: 'Ticket registration not found.' };
     setRegistrations((prev) => prev.map((r) => (r.id === regId ? { ...r, status: 'Cancelled' } : r)));
     setEvents((prev) => prev.map((e) => (e.id === reg.eventId ? { ...e, seatsFilled: Math.max(0, e.seatsFilled - 1), status: 'Open' } : e)));
-    setLeaderboard((prev) => bumpLocal(prev, reg.department, { reg: -1 }));
+    // If the student had already been marked present, claw back the event's credits too.
+    const wasPresent = reg.attended || reg.attendance === 'present';
+    const ev = events.find((e) => e.id === reg.eventId);
+    const pts = wasPresent ? -(Number(ev?.points) || 50) : 0;
+    setLeaderboard((prev) => bumpLocal(prev, reg.department, { reg: -1, chk: wasPresent ? -1 : 0, pts }));
     return { success: true };
   };
 
@@ -189,9 +200,11 @@ export function DataProvider({ children }) {
     if (!reg) return { success: false, message: 'Ticket code does not match database.' };
     if (reg.status === 'Cancelled') return { success: false, message: 'This ticket registration is Cancelled.' };
     if (reg.attended || reg.attendance === 'present') return { success: true, message: 'Student is already checked in.', registration: reg };
+    const ev = events.find((e) => e.id === reg.eventId);
+    const credits = Number(ev?.points) || 50;
     setRegistrations((prev) => prev.map((r) => (r.id === reg.id ? { ...r, attendance: 'present', attended: true } : r)));
-    setLeaderboard((prev) => bumpLocal(prev, reg.department, { chk: 1 }));
-    return { success: true, message: 'Attendance recorded successfully!', registration: { ...reg, attendance: 'present', attended: true } };
+    setLeaderboard((prev) => bumpLocal(prev, reg.department, { chk: 1, pts: credits }));
+    return { success: true, message: `Attendance recorded · +${credits} credits to ${reg.department}.`, registration: { ...reg, attendance: 'present', attended: true } };
   };
 
   const adminAction = async (action, payload) => {
@@ -209,6 +222,18 @@ export function DataProvider({ children }) {
     return verifyAttendanceLocal(regId);
   };
   const markAttendance = verifyAttendance;
+
+  // Admin override of a student's class details (year / section) on a registration.
+  const updateRegistration = async (regId, patch) => {
+    const r = await adminAction('updateRegistration', { id: regId, ...patch });
+    if (r) {
+      if (r.success) { await refreshRegistrations(); return { success: true, registration: r.registration }; }
+      return { success: false, message: r.message };
+    }
+    // offline fallback
+    setRegistrations((prev) => prev.map((x) => (x.id === regId ? { ...x, ...patch } : x)));
+    return { success: true };
+  };
 
   // ── Admin: events ──────────────────────────────────────────────────
   const addEventLocal = (info) => {
@@ -279,7 +304,7 @@ export function DataProvider({ children }) {
     <DataContext.Provider value={{
       events, registrations, leaderboard, announcements, user,
       signInStudent, signInAdmin, registerStudent, loginStudent, checkAccountExists, signOut, logout,
-      registerForEvent, cancelRegistration, verifyAttendance, markAttendance,
+      registerForEvent, cancelRegistration, verifyAttendance, markAttendance, updateRegistration,
       addEvent, updateEvent, deleteEvent, duplicateEvent, addGalleryPhoto, recruitStudentVolunteer,
       createAnnouncement, addAnnouncement, deleteAnnouncement,
     }}>

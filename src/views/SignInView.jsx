@@ -1,11 +1,12 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { sendOtp, verifyOtp } from '../lib/api';
+import { YEARS, SECTIONS } from '../lib/departments';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Logo from '../components/Logo';
 import {
-  Lock, User, KeyRound, AlertCircle, GraduationCap, Mail, Phone, IdCard,
+  Lock, User, KeyRound, AlertCircle, GraduationCap, Mail, Phone, IdCard, Users, ChevronDown,
   Eye, EyeOff, ShieldCheck, Sparkles, ArrowLeft, ArrowRight, CheckCircle2, Loader2, MailCheck, Award,
 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
@@ -102,6 +103,8 @@ export default function SignInView({ setView }) {
   const [email, setEmail] = useState('');
   const [regNo, setRegNo] = useState('');
   const [phone, setPhone] = useState('');
+  const [year, setYear] = useState('');
+  const [section, setSection] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
 
@@ -116,7 +119,7 @@ export default function SignInView({ setView }) {
   const resetMessages = () => { setError(''); setNotice(''); };
   const switchMode = (m) => {
     setMode(m); setStep('form'); resetMessages();
-    setOtp(''); setOtpToken(''); setDevCode(''); setPassword(''); setConfirm('');
+    setOtp(''); setOtpToken(''); setDevCode(''); setPassword(''); setConfirm(''); setYear(''); setSection('');
   };
 
   useEffect(() => {
@@ -176,6 +179,8 @@ export default function SignInView({ setView }) {
     if (!EMAIL_RE.test(email)) return setError('Enter a valid email address.');
     if (!isStudentEmail(email)) return setError('Only official @cb.students.amrita.edu student emails are accepted.');
     if (regNo.trim().length < 5) return setError('Enter your university register number.');
+    if (!year) return setError('Select your current year of study.');
+    if (!section) return setError('Select your class section.');
     if (phone && !/^\d{10}$/.test(phone.trim())) return setError('Phone must be 10 digits (or leave it blank).');
     if (password.length < 8) return setError('Password must be at least 8 characters.');
     if (password !== confirm) return setError('Passwords do not match.');
@@ -210,7 +215,7 @@ export default function SignInView({ setView }) {
     setLoading(true);
     const v = await verifyOtp({ email, otp, token: otpToken });
     if (!v.ok) { setLoading(false); return setError(v.error || 'Incorrect code.'); }
-    const res = await registerStudent({ name, email, registerNum: regNo, phone, password });
+    const res = await registerStudent({ name, email, registerNum: regNo, phone, password, year, section });
     setLoading(false);
     if (res.success) setView('dashboard');
     else { setError(res.message || 'Could not create account.'); setStep('form'); }
@@ -374,6 +379,12 @@ export default function SignInView({ setView }) {
                     <Input label="Register No." placeholder="CB.EN.U4CSE23001" icon={IdCard} value={regNo} onChange={(e) => setRegNo(e.target.value)} required />
                     <Input label="Phone (optional)" placeholder="9446001234" icon={Phone} value={phone} onChange={(e) => setPhone(e.target.value)} />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <SelectField label="Year of Study" icon={GraduationCap} value={year} onChange={setYear} placeholder="Select year"
+                      options={YEARS.map((y) => ({ value: y, label: `Year ${y}` }))} />
+                    <SelectField label="Class Section" icon={Users} value={section} onChange={setSection} placeholder="Select section"
+                      options={SECTIONS.map((s) => ({ value: s, label: `Section ${s}` }))} />
+                  </div>
                   <PasswordInput label="Password" value={password} onChange={setPassword} show={showPw} setShow={setShowPw} placeholder="Min 8 characters" />
                   {password && (
                     <div className="flex items-center gap-2 -mt-1">
@@ -444,6 +455,28 @@ export default function SignInView({ setView }) {
         </p>
       </div>
     </section>
+  );
+}
+
+/* ── labelled select (matches the auth input styling) ── */
+function SelectField({ label, icon: Icon, value, onChange, options, placeholder }) {
+  return (
+    <label className="block">
+      <span className="block text-[11px] font-semibold text-ignite-muted uppercase tracking-wider mb-1.5">{label} *</span>
+      <div className="relative">
+        {Icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-ignite-muted pointer-events-none"><Icon className="h-3.5 w-3.5" /></div>}
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required
+          className={`h-10 w-full appearance-none rounded-xl border border-ignite-border bg-white text-xs outline-none transition-all duration-200 focus:border-ignite-accent focus:ring-2 focus:ring-ignite-accent/10 shadow-sm pl-9 pr-8 ${value ? 'text-ignite-text' : 'text-ignite-muted'}`}
+        >
+          <option value="" disabled>{placeholder}</option>
+          {options.map((o) => <option key={o.value} value={o.value} className="text-ignite-text">{o.label}</option>)}
+        </select>
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ignite-muted pointer-events-none" />
+      </div>
+    </label>
   );
 }
 

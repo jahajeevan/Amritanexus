@@ -53,4 +53,10 @@ export const fetchRegistrations = (opts) => post('/api/registrations', opts);   
 export const apiRegister = (studentInfo, eventId) => post('/api/register', { studentInfo, eventId });
 export const apiAdmin = (action, payload, token) => post('/api/admin', { action, payload, token });
 
+// Student accounts (server-side, service role). Return null when the /api
+// runtime isn't reachable (e.g. `vite dev`) so callers fall back to local.
+export const apiStudentSignup = (fields) => post('/api/students', { action: 'signup', ...fields });
+export const apiStudentLogin = (email, password) => post('/api/students', { action: 'login', email, password });
+export const apiStudentExists = (email) => post('/api/students', { action: 'exists', email });
+
 export const backendReady = isSupabaseReady;

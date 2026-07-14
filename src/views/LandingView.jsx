@@ -195,17 +195,17 @@ function Reveal({ children, delay = 0, className = '' }) {
   );
 }
 
-/* Hero product preview — a clean digital entry pass (communicates the product). */
-function EntryPassPreview() {
+const passShell = 'relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-amrita-line bg-white shadow-lg';
+const passMotion = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.15 } };
+
+/* Signed-in student who has booked → their real, live entry pass. */
+function RealPass({ reg }) {
+  const present = reg.attended || reg.attendance === 'present';
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=${encodeURIComponent(reg.ticketId || reg.id)}`;
   return (
     <div className="relative">
       <div className="absolute -inset-6 dot-grid opacity-70" aria-hidden />
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-        className="relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-amrita-line bg-white shadow-lg"
-      >
+      <motion.div {...passMotion} className={passShell}>
         <div className="flex items-center justify-between bg-crimson-night px-5 py-4 text-white">
           <div className="flex items-center gap-2.5">
             <img src="/amrita-emblem.svg" alt="" className="h-7 w-7" style={{ filter: 'brightness(0) invert(1)' }} />
@@ -214,39 +214,107 @@ function EntryPassPreview() {
               <p className="text-[12px] font-bold">IGNITE 2026</p>
             </div>
           </div>
-          <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 ring-1 ring-emerald-400/30">Verified</span>
+          <span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${present ? 'bg-emerald-500/20 text-emerald-300 ring-emerald-400/30' : 'bg-amber-400/20 text-amber-200 ring-amber-300/30'}`}>
+            {present ? 'Verified' : 'Active'}
+          </span>
         </div>
-
         <div className="flex gap-4 p-5">
-          <div className="grid h-24 w-24 shrink-0 grid-cols-6 grid-rows-6 gap-[3px] rounded-lg border border-amrita-line bg-white p-2">
-            {Array.from({ length: 36 }).map((_, i) => (
-              <span key={i} className="rounded-[1px]" style={{ background: [0, 1, 5, 6, 7, 11, 12, 14, 18, 21, 22, 24, 27, 29, 30, 33, 35, 8, 16, 19, 25].includes(i) ? '#16181D' : 'transparent' }} />
-            ))}
-          </div>
+          <img src={qrUrl} alt="Your entry pass QR" className="h-24 w-24 shrink-0 rounded-lg border border-amrita-line bg-white p-1.5" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-bold text-amrita-ink">Jaha Jeevan</p>
-            <p className="text-[11px] font-medium text-amrita-muted">CB.EN.U4CSE23045</p>
+            <p className="truncate text-[14px] font-bold text-amrita-ink">{reg.studentName || reg.name}</p>
+            <p className="truncate text-[11px] font-medium text-amrita-muted">{reg.registerNum}</p>
             <div className="mt-3 space-y-1.5 text-[11px]">
-              <p className="flex items-center gap-1.5 text-amrita-slate"><CalendarCheck className="h-3.5 w-3.5 text-amrita-maroon" />CodeStorm Hackathon</p>
-              <p className="flex items-center gap-1.5 text-amrita-slate"><MapPin className="h-3.5 w-3.5 text-amrita-maroon" />Tech Arena · Gate 1</p>
+              <p className="flex items-center gap-1.5 text-amrita-slate"><CalendarCheck className="h-3.5 w-3.5 shrink-0 text-amrita-maroon" /><span className="truncate">{reg.eventTitle}</span></p>
+              <p className="flex items-center gap-1.5 text-amrita-slate"><MapPin className="h-3.5 w-3.5 shrink-0 text-amrita-maroon" /><span className="truncate">{reg.venue || 'Amrita campus'}</span></p>
             </div>
           </div>
         </div>
         <div className="flex items-center justify-between border-t border-amrita-lineSoft px-5 py-3">
-          <span className="font-mono text-[10px] text-amrita-faint">TKT-284613-902</span>
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />Attendance marked</span>
+          <span className="font-mono text-[10px] text-amrita-faint">{reg.ticketId || reg.id}</span>
+          {present ? (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />Attendance marked</span>
+          ) : (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-amrita-maroon"><QrCode className="h-3.5 w-3.5" />Show at the gate</span>
+          )}
         </div>
       </motion.div>
     </div>
   );
 }
 
+/* Everyone else (signed out, admin, or student without a booking) → a live
+   spotlight of a real upcoming event. No placeholder identity anywhere. */
+function FeaturedEvent({ event, setView }) {
+  const { seatsLeft, pct, isOpen } = seatInfo(event);
+  return (
+    <div className="relative">
+      <div className="absolute -inset-6 dot-grid opacity-70" aria-hidden />
+      <motion.div {...passMotion} className={passShell}>
+        <div className="flex items-center justify-between bg-crimson-night px-5 py-4 text-white">
+          <div className="flex items-center gap-2.5">
+            <img src="/amrita-emblem.svg" alt="" className="h-7 w-7" style={{ filter: 'brightness(0) invert(1)' }} />
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/60">Featured · IGNITE 2026</p>
+              <p className="text-[12px] font-bold">Now open on campus</p>
+            </div>
+          </div>
+          <span className="rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white/85 ring-1 ring-white/20">{event.status}</span>
+        </div>
+
+        <button type="button" onClick={() => setView(`eventDetail:${event.id}`)} className="block w-full p-5 text-left">
+          <div className="flex items-center gap-2 text-[11px] font-semibold">
+            <span className="text-amrita-maroon">{event.category}</span>
+            <span className="text-amrita-faint" aria-hidden>·</span>
+            <span className="text-amrita-muted">{event.department}</span>
+          </div>
+          <h3 className="mt-1.5 line-clamp-2 text-[16px] font-extrabold leading-snug tracking-tight text-amrita-ink">{event.title}</h3>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-[12px] text-amrita-slate">
+            <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-amrita-faint" aria-hidden />{formatEventDate(event.date)}</span>
+            <span className="flex min-w-0 items-center gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0 text-amrita-faint" aria-hidden /><span className="truncate">{event.venue}</span></span>
+          </div>
+          <div className="mt-4">
+            <div className="h-1.5 overflow-hidden rounded-full bg-amrita-panel">
+              <div className="h-full rounded-full bg-amrita-maroon transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-amrita-muted">
+              <span className="flex items-center gap-1"><Users className="h-3 w-3" aria-hidden />{isOpen ? `${seatsLeft} seats left` : 'Registration closed'}</span>
+              <span className="tabular-nums">{pct}% full</span>
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setView(`eventDetail:${event.id}`)}
+          className="flex w-full items-center justify-between border-t border-amrita-lineSoft px-5 py-3.5 text-[12px] font-semibold text-amrita-maroon transition-colors hover:bg-amrita-maroonSoft"
+        >
+          {isOpen ? 'Register for this event' : 'View event details'}
+          <ArrowRight className="h-4 w-4" aria-hidden />
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
+/* Hero visual — the student's real pass if they have one, otherwise a live
+   featured-event spotlight (real data, no hardcoded student). */
+function EntryPassPreview({ reg = null, event = null, setView }) {
+  if (reg) return <RealPass reg={reg} />;
+  if (event) return <FeaturedEvent event={event} setView={setView} />;
+  return null;
+}
+
 /* ─────────────────────────── the homepage ─────────────────────────── */
 
 export default function LandingView({ setView }) {
-  const { events, leaderboard, user } = useData();
+  const { events, leaderboard, registrations, user } = useData();
   const board = [...leaderboard].sort((a, b) => b.points - a.points);
   const upcoming = [...events].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 3);
+
+  // The signed-in student's pass to feature (prefer a checked-in one), else null.
+  const featuredReg = user && user.role !== 'admin' && registrations.length
+    ? (registrations.find((r) => r.attended || r.attendance === 'present') || registrations[0])
+    : null;
 
   const capabilities = [
     { icon: CalendarCheck, label: 'Event Registration' },
@@ -257,13 +325,17 @@ export default function LandingView({ setView }) {
     { icon: Trophy, label: 'Department Leaderboards' },
   ];
 
+  // Real, live numbers derived from the readable departments table.
+  const totalRegs = leaderboard.reduce((s, d) => s + (d.registrations || 0), 0);
+  const totalChecks = leaderboard.reduce((s, d) => s + (d.checkins || 0), 0);
+  const coordinators = new Set(events.map((e) => e.coordinator).filter(Boolean)).size;
   const stats = [
     { value: `${events.length}`, label: 'Active Events' },
-    { value: '1,240+', label: 'Registered Students' },
+    { value: `${totalRegs}`, label: 'Registrations' },
     { value: `${leaderboard.length}`, label: 'Departments' },
-    { value: '950+', label: 'Certificates Issued' },
-    { value: '2,100+', label: 'QR Passes Generated' },
-    { value: '48', label: 'Faculty Coordinators' },
+    { value: `${totalChecks}`, label: 'Attendance Verified' },
+    { value: `${totalRegs}`, label: 'QR Passes Issued' },
+    { value: `${coordinators}`, label: 'Faculty Coordinators' },
   ];
 
   const flow = [
@@ -345,7 +417,7 @@ export default function LandingView({ setView }) {
           </div>
 
           <div className="lg:pl-6">
-            <EntryPassPreview />
+            <EntryPassPreview reg={featuredReg} event={upcoming[0]} setView={setView} />
           </div>
         </div>
       </section>

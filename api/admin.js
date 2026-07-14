@@ -79,7 +79,26 @@ export default async function handler(req, res) {
         if (reg.attended) return res.json({ success: true, already: true, registration: mapRegistration(reg) });
         const { data: updated, error } = await supabaseAdmin.from('registrations').update({ attended: true }).eq('id', reg.id).select().single();
         if (error) throw error;
-        await bumpDepartment(reg.department, { checkins: 1, points: 50 });
+        // Award the EVENT'S custom credits (set by the admin when creating the
+        // event) to the student's department — not a flat amount.
+        const { data: ev } = await supabaseAdmin.from('events').select('points').eq('id', reg.event_id).maybeSingle();
+        const credits = Number.isFinite(Number(ev?.points)) ? Number(ev.points) : 50;
+        await bumpDepartment(reg.department, { checkins: 1, points: credits });
+        return res.json({ success: true, registration: mapRegistration(updated), credits });
+      }
+      case 'updateRegistration': {
+        // Admin override of a student's class details (year / section) on a
+        // registration — and mirror it onto the student record for next time.
+        if (!payload.id) return res.status(400).json({ success: false, message: 'Missing registration id.' });
+        const patch = {};
+        if (payload.year !== undefined) patch.year = payload.year || null;
+        if (payload.section !== undefined) patch.section = payload.section || null;
+        if (!Object.keys(patch).length) return res.status(400).json({ success: false, message: 'Nothing to update.' });
+        const { data: updated, error } = await supabaseAdmin.from('registrations').update(patch).eq('id', payload.id).select().single();
+        if (error) throw error;
+        if (updated?.email) {
+          await supabaseAdmin.from('students').update(patch).eq('email', String(updated.email).toLowerCase());
+        }
         return res.json({ success: true, registration: mapRegistration(updated) });
       }
       default:

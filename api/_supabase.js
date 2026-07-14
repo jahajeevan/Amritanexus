@@ -122,6 +122,7 @@ export function mapRegistration(r) {
     rollNo: r.register_num,
     department: r.department,
     year: r.year,
+    section: r.section,
     email: r.email,
     phone: r.phone,
     eventId: r.event_id,

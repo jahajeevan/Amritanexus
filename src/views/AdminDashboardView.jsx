@@ -6,13 +6,13 @@ import { StatCard, Panel, Badge, EmptyState, NavItem } from '../components/ui';
 import {
   LayoutDashboard, CalendarDays, Users, ScanLine, Megaphone, Plus, Edit3, Trash2, Save, X,
   FileSpreadsheet, CheckCircle2, XCircle, Search, ShieldCheck, LogOut, Loader2, AlertCircle,
-  ChevronRight, Trophy, Bell, ArrowRight, Camera, CameraOff, Keyboard,
+  ChevronRight, Trophy, Bell, ArrowRight, Camera, CameraOff, Keyboard, ClipboardList, Printer, Download, GraduationCap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DEPARTMENTS, SECTIONS, YEARS, normalizeDept, deptLabel } from '../lib/departments';
 
 const CATEGORIES = ['Hackathon', 'Workshop', 'Technical', 'Sports', 'Cultural', 'Arts', 'Music', 'Startup', 'Seminar', 'Gaming'];
-const DEPARTMENTS = ['Computer Science', 'Electronics', 'Mechanical', 'Civil', 'Chemical', 'Management', 'Arts & Science'];
-const EMPTY = { title: '', category: 'Technical', department: 'Computer Science', date: '', time: '', venue: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '' };
+const EMPTY = { title: '', category: 'Technical', department: 'CSE', date: '', time: '', venue: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '' };
 
 const selectCls = 'h-10 w-full rounded-xl border border-amrita-line bg-white px-3 text-[13px] font-medium text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10';
 const statusTone = { Open: 'success', 'Almost Full': 'warning', Closed: 'danger', Upcoming: 'maroon', Completed: 'neutral' };
@@ -42,7 +42,7 @@ function EventForm({ initial, onSave, onCancel }) {
       <div className="grid gap-4 p-5 md:grid-cols-2">
         <div className="md:col-span-2"><Input label="Event title" placeholder="e.g. CodeStorm Hackathon" value={form.title} onChange={(e) => set('title', e.target.value)} required /></div>
         <Field label="Category"><select value={form.category} onChange={(e) => set('category', e.target.value)} className={selectCls}>{CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></Field>
-        <Field label="Department"><select value={form.department} onChange={(e) => set('department', e.target.value)} className={selectCls}>{DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}</select></Field>
+        <Field label="Department"><select value={form.department} onChange={(e) => set('department', e.target.value)} className={selectCls}>{DEPARTMENTS.map((d) => <option key={d.code} value={d.code}>{d.label}</option>)}</select></Field>
         <Input label="Date" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
         <Input label="Time" type="time" value={form.time} onChange={(e) => set('time', e.target.value)} />
         <div className="md:col-span-2"><Input label="Venue" placeholder="e.g. Tech Arena Gate 1" value={form.venue} onChange={(e) => set('venue', e.target.value)} required /></div>
@@ -322,6 +322,199 @@ function Announcements() {
   );
 }
 
+/* ── Class attendance forms — per section / year, CSV + printable ── */
+const isPresent = (r) => r.attended || r.attendance === 'present';
+
+function buildCsv(list) {
+  const headers = ['S.No', 'Student', 'Register No', 'Department', 'Year', 'Section', 'Event', 'Registered On', 'Pass ID', 'Attendance'];
+  const body = list.map((r, i) => [
+    i + 1, r.studentName || r.name, r.registerNum, deptLabel(normalizeDept(r.department)),
+    r.year || '', r.section || '', r.eventTitle, r.registrationDate || '', r.ticketId || '',
+    isPresent(r) ? 'Present' : 'Absent',
+  ]);
+  return [headers, ...body].map((row) => row.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+}
+
+function downloadCsv(list, filename) {
+  const blob = new Blob([buildCsv(list)], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Group a flat list into per-class buckets (year → section).
+function groupByClass(list) {
+  const map = new Map();
+  for (const r of list) {
+    const key = `${r.year || '—'}|${r.section || '—'}`;
+    if (!map.has(key)) map.set(key, { year: r.year || '—', section: r.section || '—', rows: [] });
+    map.get(key).rows.push(r);
+  }
+  return [...map.values()].sort((a, b) => `${a.year}${a.section}`.localeCompare(`${b.year}${b.section}`));
+}
+
+// Open a print-ready window: one attendance sheet per class group.
+function printClassForms(deptCode, eventLabel, groups) {
+  const w = window.open('', '_blank', 'width=920,height=720');
+  if (!w) { alert('Please allow pop-ups to print the attendance forms.'); return; }
+  const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const sheets = groups.map((g) => {
+    const present = g.rows.filter(isPresent).length;
+    const body = g.rows
+      .slice()
+      .sort((a, b) => String(a.registerNum || '').localeCompare(String(b.registerNum || '')))
+      .map((r, i) => `<tr>
+        <td class="n">${i + 1}</td>
+        <td>${esc(r.studentName || r.name)}</td>
+        <td class="mono">${esc(r.registerNum)}</td>
+        <td>${esc(r.eventTitle)}</td>
+        <td class="c">${isPresent(r) ? '&#10003;' : ''}</td>
+        <td class="sig"></td>
+      </tr>`).join('');
+    return `<section class="sheet">
+      <div class="head">
+        <div><div class="k">Amrita Vishwa Vidyapeetham · IGNITE 2026</div>
+        <h1>${esc(deptLabel(deptCode))} — Year ${esc(g.year)} · Section ${esc(g.section)}</h1>
+        <div class="sub">Event: ${esc(eventLabel)} &nbsp;·&nbsp; Generated: ${today}</div></div>
+        <div class="tot"><span>${present}/${g.rows.length}</span><small>present</small></div>
+      </div>
+      <table><thead><tr><th class="n">#</th><th>Student</th><th>Register No</th><th>Event</th><th class="c">Present</th><th class="sig">Signature</th></tr></thead>
+      <tbody>${body || '<tr><td colspan="6" class="empty">No students in this class.</td></tr>'}</tbody></table>
+      <div class="foot"><span>Class Advisor signature: ____________________</span><span>Date: ____________</span></div>
+    </section>`;
+  }).join('');
+
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Attendance Forms — ${esc(deptLabel(deptCode))}</title>
+    <style>
+      *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#16181D;margin:0;padding:24px;background:#fff}
+      .sheet{max-width:820px;margin:0 auto 28px;padding-bottom:14px}
+      .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #A3133F;padding-bottom:12px;margin-bottom:14px}
+      .k{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#A3133F}
+      h1{font-size:18px;margin:4px 0 2px} .sub{font-size:11px;color:#555}
+      .tot{text-align:center} .tot span{display:block;font-size:22px;font-weight:800;color:#A3133F} .tot small{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#888}
+      table{width:100%;border-collapse:collapse;font-size:12px} th,td{border:1px solid #d8d8d8;padding:7px 9px;text-align:left}
+      th{background:#faf3f5;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#7a2340} .n{width:34px;text-align:center} .c{width:64px;text-align:center;font-weight:700;color:#0a7d3a} .sig{width:150px} .mono{font-family:ui-monospace,Menlo,monospace;font-size:11px}
+      .empty{text-align:center;color:#999;padding:18px}
+      .foot{display:flex;justify-content:space-between;margin-top:12px;font-size:11px;color:#444}
+      @media print{ body{padding:0} .sheet{page-break-after:always;margin:0;padding:18px 22px} .sheet:last-child{page-break-after:auto} }
+    </style></head><body>${sheets}
+    <script>window.onload=function(){setTimeout(function(){window.print()},350)}</script></body></html>`);
+  w.document.close();
+}
+
+function ClassAttendance() {
+  const { registrations, events, updateRegistration } = useData();
+  const [dept, setDept] = useState(DEPARTMENTS[0].code);
+  const [year, setYear] = useState('all');
+  const [section, setSection] = useState('all');
+  const [eventId, setEventId] = useState('all');
+  const [savingId, setSavingId] = useState(null);
+
+  const rows = useMemo(() => registrations
+    .filter((r) => r.status !== 'Cancelled')
+    .filter((r) => normalizeDept(r.department) === dept)
+    .filter((r) => year === 'all' || String(r.year || '') === year)
+    .filter((r) => section === 'all' || String(r.section || '') === section)
+    .filter((r) => eventId === 'all' || r.eventId === eventId)
+    .sort((a, b) => String(a.registerNum || '').localeCompare(String(b.registerNum || ''))),
+  [registrations, dept, year, section, eventId]);
+
+  const presentCount = rows.filter(isPresent).length;
+  const pct = rows.length ? Math.round((presentCount / rows.length) * 100) : 0;
+  const eventLabel = eventId === 'all' ? 'All events' : (events.find((e) => e.id === eventId)?.title || 'Event');
+  const slug = (s) => String(s).replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+  const baseName = `attendance_${slug(dept)}${year !== 'all' ? `_y${year}` : ''}${section !== 'all' ? `_sec${section}` : ''}`;
+
+  const groups = useMemo(() => groupByClass(rows), [rows]);
+
+  const saveOverride = async (r, patch) => {
+    setSavingId(r.id);
+    await updateRegistration(r.id, patch);
+    setSavingId(null);
+  };
+
+  const miniSel = 'h-8 rounded-lg border border-amrita-line bg-white px-2 text-[12px] font-medium text-amrita-ink outline-none focus:border-amrita-maroon';
+
+  return (
+    <div className="space-y-6">
+      <SectionHead title="Class attendance forms" sub="Filter by class & section, then download or print the advisor's attendance sheet" />
+
+      {/* filters */}
+      <Panel>
+        <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Department"><select value={dept} onChange={(e) => setDept(e.target.value)} className={selectCls}>{DEPARTMENTS.map((d) => <option key={d.code} value={d.code}>{d.label}</option>)}</select></Field>
+          <Field label="Year"><select value={year} onChange={(e) => setYear(e.target.value)} className={selectCls}><option value="all">All years</option>{YEARS.map((y) => <option key={y} value={y}>Year {y}</option>)}</select></Field>
+          <Field label="Section"><select value={section} onChange={(e) => setSection(e.target.value)} className={selectCls}><option value="all">All sections</option>{SECTIONS.map((s) => <option key={s} value={s}>Section {s}</option>)}</select></Field>
+          <Field label="Event"><select value={eventId} onChange={(e) => setEventId(e.target.value)} className={selectCls}><option value="all">All events</option>{events.map((e) => <option key={e.id} value={e.id}>{e.title}</option>)}</select></Field>
+        </div>
+      </Panel>
+
+      {/* summary + actions */}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <StatCard icon={Users} label="Students" value={rows.length} />
+        <StatCard icon={CheckCircle2} label="Present" value={presentCount} />
+        <StatCard icon={XCircle} label="Absent" value={rows.length - presentCount} />
+        <StatCard icon={Trophy} label="Attendance" value={`${pct}%`} />
+      </div>
+
+      <div className="flex flex-wrap gap-2.5">
+        <button onClick={() => downloadCsv(rows, `${baseName}.csv`)} disabled={!rows.length}
+          className="inline-flex items-center gap-2 rounded-xl bg-amrita-maroon px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark disabled:opacity-50">
+          <Download className="h-4 w-4" /> Download CSV
+        </button>
+        <button onClick={() => printClassForms(dept, eventLabel, section === 'all' ? groups : [{ year: year === 'all' ? '—' : year, section, rows }])} disabled={!rows.length}
+          className="inline-flex items-center gap-2 rounded-xl border border-amrita-line bg-white px-4 py-2.5 text-[12px] font-semibold text-amrita-ink hover:border-amrita-maroon hover:text-amrita-maroon disabled:opacity-50">
+          <Printer className="h-4 w-4" /> Print sheet{section === 'all' && groups.length > 1 ? ` (${groups.length} classes)` : ''}
+        </button>
+        <button onClick={() => printClassForms(dept, eventLabel, groups)} disabled={!rows.length}
+          className="inline-flex items-center gap-2 rounded-xl border border-amrita-line bg-white px-4 py-2.5 text-[12px] font-semibold text-amrita-slate hover:border-amrita-maroon hover:text-amrita-maroon disabled:opacity-50">
+          <ClipboardList className="h-4 w-4" /> Print all class forms
+        </button>
+      </div>
+
+      {/* roster */}
+      <Panel title={`${deptLabel(dept)} · roster`} subtitle={`${rows.length} student${rows.length === 1 ? '' : 's'} · ${eventLabel}`} bodyClass="overflow-x-auto">
+        {rows.length === 0 ? (
+          <EmptyState icon={GraduationCap} title="No registrations for this class" hint="Adjust the filters, or students haven't registered yet." />
+        ) : (
+          <table className="w-full text-left text-[12.5px]">
+            <thead>
+              <tr className="border-b border-amrita-lineSoft text-[10.5px] font-semibold uppercase tracking-wide text-amrita-muted">
+                <th className="px-5 py-3">Student</th><th className="px-5 py-3">Register No</th><th className="px-5 py-3">Year</th><th className="px-5 py-3">Section</th><th className="px-5 py-3">Event</th><th className="px-5 py-3 text-center">Attendance</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-amrita-lineSoft">
+              {rows.map((r) => (
+                <tr key={r.id} className="hover:bg-amrita-canvas">
+                  <td className="px-5 py-3 font-semibold text-amrita-ink">{r.studentName || r.name}</td>
+                  <td className="px-5 py-3 font-mono text-amrita-slate">{r.registerNum}</td>
+                  <td className="px-5 py-3">
+                    <select value={r.year || ''} disabled={savingId === r.id} onChange={(e) => saveOverride(r, { year: e.target.value })} className={miniSel}>
+                      <option value="">—</option>{YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-5 py-3">
+                    <select value={r.section || ''} disabled={savingId === r.id} onChange={(e) => saveOverride(r, { section: e.target.value })} className={miniSel}>
+                      <option value="">—</option>{SECTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-5 py-3 text-amrita-slate">{r.eventTitle}</td>
+                  <td className="px-5 py-3 text-center"><Badge tone={isPresent(r) ? 'success' : 'neutral'}>{isPresent(r) ? 'Present' : 'Absent'}</Badge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Panel>
+      <p className="flex items-center gap-1.5 text-[11.5px] text-amrita-muted"><AlertCircle className="h-3.5 w-3.5" /> Tip: change a student's Year or Section inline to correct their class — it updates their record instantly.</p>
+    </div>
+  );
+}
+
 export default function AdminDashboardView({ setView }) {
   const { user, events, registrations, leaderboard, addEvent, updateEvent, deleteEvent, logout } = useData();
   const [tab, setTab] = useState('overview');
@@ -355,8 +548,8 @@ export default function AdminDashboardView({ setView }) {
   const startEdit = (ev) => { setEditTarget(ev); setShowForm(true); setTab('events'); };
 
   const exportCSV = () => {
-    const headers = ['Student', 'Register No', 'Department', 'Year', 'Email', 'Phone', 'Event', 'Registered', 'Attendance'];
-    const rows = registrations.map((r) => [r.studentName, r.registerNum, r.department, r.year, r.email, r.phone, r.eventTitle, r.registrationDate, (r.attended || r.attendance === 'present') ? 'Present' : 'Absent']);
+    const headers = ['Student', 'Register No', 'Department', 'Year', 'Section', 'Email', 'Phone', 'Event', 'Registered', 'Attendance'];
+    const rows = registrations.map((r) => [r.studentName, r.registerNum, r.department, r.year, r.section || '', r.email, r.phone, r.eventTitle, r.registrationDate, (r.attended || r.attendance === 'present') ? 'Present' : 'Absent']);
     const csv = 'data:text/csv;charset=utf-8,' + [headers, ...rows].map((row) => row.map((v) => `"${v ?? ''}"`).join(',')).join('\n');
     const a = document.createElement('a');
     a.href = encodeURI(csv);
@@ -369,6 +562,7 @@ export default function AdminDashboardView({ setView }) {
     { id: 'events', label: 'Events', icon: CalendarDays, badge: events.length },
     { id: 'registrations', label: 'Registrations', icon: Users, badge: registrations.length || undefined },
     { id: 'verify', label: 'Verification', icon: ScanLine },
+    { id: 'classes', label: 'Class Forms', icon: ClipboardList },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
   ];
 
@@ -509,6 +703,7 @@ export default function AdminDashboardView({ setView }) {
               )}
 
               {tab === 'verify' && <Verification />}
+              {tab === 'classes' && <ClassAttendance />}
               {tab === 'announcements' && <Announcements />}
             </motion.div>
           </AnimatePresence>

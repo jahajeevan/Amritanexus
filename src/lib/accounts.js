@@ -1,8 +1,12 @@
-// Student account store. localStorage is the source of truth (always works);
-// Supabase is a best-effort mirror so accounts sync across devices when the
-// `students` table exists. Every Supabase call is wrapped — failures degrade
-// silently to local-only.
-import { supabase, isSupabaseReady } from './supabaseClient.js';
+// Student account store.
+//
+// Primary path: the /api/students serverless function (service role) so
+// accounts live in Supabase and students can sign in from any device, without
+// ever exposing password hashes to the browser.
+//
+// Fallback path: localStorage — used automatically when the /api runtime isn't
+// reachable (e.g. `vite dev` or offline), so the whole flow stays testable.
+import { apiStudentSignup, apiStudentLogin, apiStudentExists } from './backend.js';
 import { hashPassword, verifyPassword, randomSalt } from './crypto.js';
 
 const LS_KEY = 'ignite_accounts';
@@ -41,8 +45,28 @@ const toProfile = (a) => ({
   phone: a.phone,
   department: a.department,
   year: a.year || 'III',
+  section: a.section || null,
   role: 'student',
 });
+
+// Cache a signed-in/created profile locally so offline reloads keep the user.
+function cacheProfile(profile) {
+  const list = readLocal();
+  if (!list.some((a) => a.email === profile.email)) {
+    list.push({
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      registerNum: profile.registerNum,
+      phone: profile.phone,
+      department: profile.department,
+      year: profile.year,
+      section: profile.section,
+      serverManaged: true,
+    });
+    writeLocal(list);
+  }
+}
 
 export function findLocalByEmail(email) {
   const e = String(email).toLowerCase().trim();
@@ -50,105 +74,66 @@ export function findLocalByEmail(email) {
 }
 
 export async function accountExists(email) {
-  if (findLocalByEmail(email)) return true;
-  if (isSupabaseReady) {
-    try {
-      const { data } = await supabase
-        .from('students')
-        .select('email')
-        .eq('email', String(email).toLowerCase().trim())
-        .maybeSingle();
-      return Boolean(data);
-    } catch {
-      /* ignore */
-    }
-  }
-  return false;
+  const server = await apiStudentExists(email);
+  if (server && typeof server.exists === 'boolean') return server.exists;
+  return Boolean(findLocalByEmail(email)); // offline / dev fallback
 }
 
-export async function createAccount({ name, email, registerNum, phone, password, year }) {
+export async function createAccount({ name, email, registerNum, phone, password, year, section }) {
+  const server = await apiStudentSignup({ name, email, registerNum, phone, password, year, section });
+  if (server) {
+    if (server.success) {
+      cacheProfile(server.profile);
+      return { success: true, profile: server.profile };
+    }
+    return { success: false, message: server.message };
+  }
+
+  // ── offline / dev fallback: create a local-only account ──
   const e = String(email).toLowerCase().trim();
   const salt = randomSalt();
   const passwordHash = await hashPassword(password, salt);
-  const department = guessDepartment(registerNum);
-
   const account = {
     id: `usr-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     name: name.trim(),
     email: e,
     registerNum: registerNum.toUpperCase().trim(),
     phone: (phone || '').trim(),
-    department,
+    department: guessDepartment(registerNum),
     year: year || 'III',
+    section: section || null,
     salt,
     passwordHash,
     createdAt: new Date().toISOString(),
   };
-
   const list = readLocal();
   list.push(account);
   writeLocal(list);
-
-  if (isSupabaseReady) {
-    try {
-      await supabase.from('students').upsert(
-        {
-          id: account.id,
-          name: account.name,
-          email: account.email,
-          register_num: account.registerNum,
-          phone: account.phone,
-          department: account.department,
-          year: account.year,
-          salt: account.salt,
-          password_hash: account.passwordHash,
-        },
-        { onConflict: 'email' }
-      );
-    } catch {
-      /* offline-only is fine */
-    }
-  }
-
   return { success: true, profile: toProfile(account) };
 }
 
 export async function authenticate(email, password) {
-  const e = String(email).toLowerCase().trim();
-
-  let account = findLocalByEmail(e);
-
-  if (!account && isSupabaseReady) {
-    try {
-      const { data } = await supabase.from('students').select('*').eq('email', e).maybeSingle();
-      if (data) {
-        account = {
-          id: data.id,
-          name: data.name,
-          email: data.email,
-          registerNum: data.register_num,
-          phone: data.phone,
-          department: data.department,
-          year: data.year,
-          salt: data.salt,
-          passwordHash: data.password_hash,
-        };
-        // cache locally for offline next time
-        const list = readLocal();
-        if (!list.some((a) => a.email === e)) {
-          list.push(account);
-          writeLocal(list);
-        }
-      }
-    } catch {
-      /* ignore */
+  const server = await apiStudentLogin(email, password);
+  if (server) {
+    if (server.success) {
+      cacheProfile(server.profile);
+      return { success: true, profile: server.profile };
     }
+    // Server reachable but rejected — an account created offline may still
+    // exist locally, so try that before surfacing the server error.
+    const local = await authenticateLocal(email, password);
+    return local.success ? local : { success: false, message: server.message };
   }
+  return authenticateLocal(email, password); // offline / dev fallback
+}
 
+async function authenticateLocal(email, password) {
+  const account = findLocalByEmail(email);
   if (!account) return { success: false, message: 'No account found for this email. Please sign up.' };
-
+  if (account.serverManaged || !account.salt) {
+    return { success: false, message: 'This account lives on the server — please connect to the internet to sign in.' };
+  }
   const ok = await verifyPassword(password, account.salt, account.passwordHash);
   if (!ok) return { success: false, message: 'Incorrect password. Please try again.' };
-
   return { success: true, profile: toProfile(account) };
 }

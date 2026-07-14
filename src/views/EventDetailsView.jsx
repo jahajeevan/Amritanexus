@@ -154,7 +154,7 @@ function RegistrationCard({ event, setView }) {
     { icon: Mail, label: 'University email', value: user.email },
     { icon: IdCard, label: 'Register number', value: registerNum, mono: true },
     { icon: GraduationCap, label: 'Department', value: user.department },
-    { icon: CalendarClock, label: 'Academic year', value: user.year ? `Year ${user.year}` : '—' },
+    { icon: CalendarClock, label: 'Year & section', value: `${user.year ? `Year ${user.year}` : '—'}${user.section ? ` · Sec ${user.section}` : ''}` },
     { icon: Phone, label: 'Phone', value: user.phone || '—' },
   ];
 
@@ -167,6 +167,7 @@ function RegistrationCard({ event, setView }) {
         registerNum: user.rollNo || user.registerNum,
         department: user.department,
         year: user.year,
+        section: user.section,
         email: user.email,
         phone: user.phone,
       },

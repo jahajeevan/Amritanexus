@@ -34,6 +34,7 @@ export default async function handler(req, res) {
       register_num: registerNum,
       department: studentInfo.department || 'Computer Science',
       year: studentInfo.year || 'III',
+      section: studentInfo.section || null,
       email,
       phone: studentInfo.phone || '',
       event_id: eventId,
@@ -56,7 +57,10 @@ export default async function handler(req, res) {
     else if (filled >= ev.max_seats * 0.9) status = 'Almost Full';
     await supabaseAdmin.from('events').update({ seats_filled: filled, status }).eq('id', eventId);
 
-    await bumpDepartment(row.department, { registrations: 1, points: 10 });
+    // Registering only counts a seat — department CREDITS are awarded later,
+    // when the student is actually marked present at the gate (see /api/admin
+    // markAttendance), using that event's custom credit value.
+    await bumpDepartment(row.department, { registrations: 1, points: 0 });
 
     return res.status(200).json({ success: true, registration: mapRegistration(inserted) });
   } catch (e) {
