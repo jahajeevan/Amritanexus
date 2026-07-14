@@ -7,6 +7,7 @@ import {
   Code2, FlaskConical, Music4, Rocket, Lightbulb, Users2, CalendarCheck,
 } from 'lucide-react';
 import { motion, useInView } from 'framer-motion';
+import { statusBadgeClass, seatInfo, formatEventDate } from '../components/eventUi';
 
 /* ─────────────────────────── shared utilities ─────────────────────────── */
 
@@ -38,12 +39,13 @@ function AnimatedCounter({ value, duration = 1400 }) {
   );
 }
 
-export function CountdownTimer({ targetDate, targetTime }) {
+export function CountdownTimer({ targetDate, targetTime, variant = 'pill' }) {
   const [t, setT] = useState({});
   useEffect(() => {
     const calc = () => {
       const target = new Date(`${targetDate}T${targetTime || '00:00'}:00`);
       const diff = target - new Date();
+      if (Number.isNaN(target.getTime())) return setT({ over: true });
       if (diff <= 0) return setT({ over: true });
       setT({
         d: Math.floor(diff / 86400000),
@@ -57,76 +59,110 @@ export function CountdownTimer({ targetDate, targetTime }) {
   }, [targetDate, targetTime]);
 
   if (t.over) return null;
+
+  // Larger, segmented countdown used on the event detail hero.
+  if (variant === 'blocks') {
+    const blocks = [
+      { v: t.d, l: 'days' },
+      { v: t.h, l: 'hrs' },
+      { v: t.m, l: 'min' },
+    ];
+    return (
+      <div className="inline-flex items-center gap-2" role="timer" aria-label="Time until event starts">
+        <Clock className="h-4 w-4 text-amrita-maroon" aria-hidden />
+        <div className="flex items-center gap-1.5">
+          {blocks.map((b, i) => (
+            <React.Fragment key={b.l}>
+              {i > 0 && <span className="text-[13px] font-bold text-amrita-faint">:</span>}
+              <div className="flex flex-col items-center rounded-lg border border-amrita-line bg-white px-2.5 py-1.5 shadow-xs">
+                <span className="text-[15px] font-extrabold leading-none tabular-nums text-amrita-ink">
+                  {String(b.v).padStart(2, '0')}
+                </span>
+                <span className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-amrita-muted">{b.l}</span>
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="inline-flex items-center gap-2 rounded-lg bg-amrita-panel border border-amrita-line px-2.5 py-1">
-      <Clock className="h-3 w-3 text-amrita-maroon" />
-      <span className="text-[11px] font-semibold text-amrita-slate tabular-nums">
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-amrita-line bg-amrita-panel px-2.5 py-1" role="timer">
+      <Clock className="h-3 w-3 text-amrita-maroon" aria-hidden />
+      <span className="text-[11px] font-semibold tabular-nums text-amrita-slate">
         {t.d}d {t.h}h {t.m}m to go
       </span>
-    </div>
+    </span>
   );
 }
 
-const statusStyle = {
-  Open: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-  'Almost Full': 'text-amber-700 bg-amber-50 border-amber-200',
-  Closed: 'text-red-700 bg-red-50 border-red-200',
-  Upcoming: 'text-amrita-maroon bg-amrita-maroonSoft border-amrita-maroon/20',
-  Completed: 'text-slate-600 bg-slate-50 border-slate-200',
-};
-
 export function EventCard({ event, onView }) {
-  const seatsLeft = Math.max(0, event.maxSeats - event.seatsFilled);
-  const pct = Math.min(100, Math.round((event.seatsFilled / event.maxSeats) * 100));
-  const open = event.status !== 'Closed' && event.status !== 'Completed';
+  const { seatsLeft, pct, isOpen } = seatInfo(event);
+  const low = isOpen && seatsLeft <= Math.max(5, Math.round((event.maxSeats || 0) * 0.1));
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-amrita-line bg-white shadow-xs hover-lift-sm">
-      <div className="relative h-40 overflow-hidden border-b border-amrita-lineSoft bg-amrita-panel">
+      <button
+        type="button"
+        onClick={onView}
+        aria-label={`View details for ${event.title}`}
+        className="relative block h-40 w-full overflow-hidden border-b border-amrita-lineSoft bg-amrita-panel text-left focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amrita-maroon"
+      >
         {event.gallery?.[0] ? (
-          <img src={event.gallery[0].url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          <img
+            src={event.gallery[0].url}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         ) : (
           <div className="dot-grid flex h-full w-full items-center justify-center">
             <GraduationCap className="h-9 w-9 text-amrita-maroon/25" />
           </div>
         )}
-        <span className={`absolute right-3 top-3 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${statusStyle[event.status] || statusStyle.Open}`}>
+        <span className={`absolute right-3 top-3 rounded-md border px-2 py-0.5 text-[10px] font-semibold shadow-xs ${statusBadgeClass(event.status)}`}>
           {event.status}
         </span>
-      </div>
+      </button>
 
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-center gap-2 text-[11px] font-semibold">
           <span className="text-amrita-maroon">{event.category}</span>
-          <span className="text-amrita-faint">·</span>
+          <span className="text-amrita-faint" aria-hidden>·</span>
           <span className="text-amrita-muted">{event.department}</span>
         </div>
-        <h3 className="mt-1.5 text-[15px] font-bold leading-snug tracking-tight text-amrita-ink line-clamp-2">
-          {event.title}
+        <h3 className="mt-1.5 line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-amrita-ink">
+          <button onClick={onView} className="text-left transition-colors hover:text-amrita-maroon focus:outline-none">
+            {event.title}
+          </button>
         </h3>
 
         <div className="mt-4 grid grid-cols-2 gap-2 text-[12px] text-amrita-slate">
-          <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-amrita-faint" />{event.date}</span>
-          <span className="flex items-center gap-1.5 truncate"><MapPin className="h-3.5 w-3.5 text-amrita-faint" />{event.venue}</span>
+          <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-amrita-faint" aria-hidden />{formatEventDate(event.date)}</span>
+          <span className="flex min-w-0 items-center gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0 text-amrita-faint" aria-hidden /><span className="truncate">{event.venue}</span></span>
         </div>
 
         <div className="mt-4">
           <div className="h-1.5 overflow-hidden rounded-full bg-amrita-panel">
             <div className="h-full rounded-full bg-amrita-maroon transition-all" style={{ width: `${pct}%` }} />
           </div>
-          <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium text-amrita-muted">
-            <span className="flex items-center gap-1"><Users className="h-3 w-3" />{seatsLeft} seats left</span>
-            <span>{pct}% full</span>
+          <div className="mt-1.5 flex items-center justify-between text-[11px] font-medium">
+            <span className={`flex items-center gap-1 ${low ? 'text-amber-600' : 'text-amrita-muted'}`}>
+              <Users className="h-3 w-3" aria-hidden />
+              {isOpen ? `${seatsLeft} seats left` : 'Registration closed'}
+            </span>
+            <span className="text-amrita-muted tabular-nums">{pct}% full</span>
           </div>
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-          {open ? <CountdownTimer targetDate={event.date} targetTime={event.time} /> : <span />}
+          {isOpen ? <CountdownTimer targetDate={event.date} targetTime={event.time} /> : <span aria-hidden />}
           <button
             onClick={onView}
             className="inline-flex items-center gap-1 text-[12px] font-semibold text-amrita-maroon transition-colors hover:text-amrita-maroonDark"
           >
-            {open ? 'Register' : 'Details'} <ChevronRight className="h-3.5 w-3.5" />
+            {isOpen ? 'Register' : 'View details'} <ChevronRight className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
       </div>

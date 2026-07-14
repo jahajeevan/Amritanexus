@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import jsQR from 'jsqr';
 import { useData } from '../context/DataContext';
 import Input from '../components/Input';
 import { StatCard, Panel, Badge, EmptyState, NavItem } from '../components/ui';
 import {
   LayoutDashboard, CalendarDays, Users, ScanLine, Megaphone, Plus, Edit3, Trash2, Save, X,
   FileSpreadsheet, CheckCircle2, XCircle, Search, ShieldCheck, LogOut, Loader2, AlertCircle,
-  ChevronRight, Trophy, Bell, ArrowRight,
+  ChevronRight, Trophy, Bell, ArrowRight, Camera, CameraOff, Keyboard,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -72,75 +73,178 @@ function Field({ label, children }) {
   return <label className="block"><span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-amrita-muted">{label}</span>{children}</label>;
 }
 
-/* ── Verification (clean panel replacing the fake terminal) ── */
+/* ── Verification — live webcam QR scanning + manual fallback ── */
 function Verification() {
   const { registrations, markAttendance, events } = useData();
   const [code, setCode] = useState('');
   const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [camOn, setCamOn] = useState(false);
+  const [camError, setCamError] = useState('');
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const rafRef = useRef(0);
+  const lastHitRef = useRef(0);
   const checkedToday = registrations.filter((r) => r.attended || r.attendance === 'present');
 
-  const verify = async (e) => {
-    e.preventDefault();
-    if (!code.trim()) return;
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const reg = registrations.find((r) => r.ticketId === code.trim().toUpperCase());
+  const evaluate = (raw) => {
+    const id = String(raw).trim().toUpperCase();
+    const reg = registrations.find((r) => (r.ticketId || '').toUpperCase() === id || (r.id || '').toUpperCase() === id);
     const ev = reg && events.find((e) => e.id === reg.eventId);
-    if (!reg) setResult({ state: 'invalid', msg: 'No pass matches this ID.' });
-    else if (reg.attended || reg.attendance === 'present') setResult({ state: 'duplicate', reg, ev, msg: 'Already checked in.' });
-    else { markAttendance(reg.id); setResult({ state: 'valid', reg, ev, msg: 'Attendance recorded · credits awarded.' }); }
-    setLoading(false);
-    setCode('');
+    const at = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    if (!reg) return setResult({ state: 'invalid', code: id, at, msg: 'No pass matches this code.' });
+    if (reg.attended || reg.attendance === 'present') return setResult({ state: 'duplicate', reg, ev, at, msg: 'This pass is already checked in.' });
+    markAttendance(reg.id);
+    setResult({ state: 'valid', reg, ev, at, msg: 'Attendance recorded · credits awarded to the department.' });
+  };
+  // keep the scan loop calling the latest evaluate (avoids stale closure)
+  const evalRef = useRef(evaluate);
+  evalRef.current = evaluate;
+
+  const verifyManual = (e) => { e.preventDefault(); if (!code.trim()) return; evaluate(code); setCode(''); };
+
+  const stopCam = () => {
+    cancelAnimationFrame(rafRef.current);
+    if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCamOn(false);
+  };
+  const startCam = async () => {
+    setCamError('');
+    if (!navigator.mediaDevices?.getUserMedia) return setCamError('Camera is not supported in this browser.');
+    try {
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setCamOn(true);
+    } catch {
+      setCamError('Camera access was blocked. Allow the camera in your browser, or use manual entry below.');
+    }
   };
 
-  const tone = { valid: 'success', duplicate: 'warning', invalid: 'danger' };
-  const ResIcon = result?.state === 'valid' ? CheckCircle2 : result?.state === 'duplicate' ? AlertCircle : XCircle;
+  useEffect(() => () => stopCam(), []);
+
+  useEffect(() => {
+    if (!camOn) return;
+    const video = videoRef.current;
+    if (!video || !streamRef.current) return;
+    video.srcObject = streamRef.current;
+    video.setAttribute('playsinline', 'true');
+    video.play().catch(() => {});
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const scan = () => {
+      if (video.readyState >= 2 && video.videoWidth) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (qr?.data && Date.now() - lastHitRef.current > 2200) {
+          lastHitRef.current = Date.now();
+          evalRef.current(qr.data);
+        }
+      }
+      rafRef.current = requestAnimationFrame(scan);
+    };
+    rafRef.current = requestAnimationFrame(scan);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [camOn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const rc = result?.state;
+  const ResIcon = rc === 'valid' ? CheckCircle2 : rc === 'duplicate' ? AlertCircle : XCircle;
+  const resBox = rc === 'valid' ? 'border-emerald-200 bg-emerald-50' : rc === 'duplicate' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50';
+  const resText = rc === 'valid' ? 'text-emerald-800' : rc === 'duplicate' ? 'text-amber-800' : 'text-red-800';
+  const resIcon = rc === 'valid' ? 'text-emerald-600' : rc === 'duplicate' ? 'text-amber-600' : 'text-red-600';
 
   return (
     <div className="space-y-6">
-      <SectionHead title="Attendance verification" sub="Enter a student's pass ID to verify entry and award credits" />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Panel title="Verify a pass" subtitle="Webcam QR scanning is coming next">
-          <form onSubmit={verify} className="space-y-4 p-5">
-            <div className="relative">
-              <ScanLine className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-amrita-muted" />
-              <input value={code} onChange={(e) => setCode(e.target.value)} autoFocus placeholder="Scan or type pass ID (TKT-…)"
-                className="h-11 w-full rounded-xl border border-amrita-line bg-white pl-10 pr-3 font-mono text-[13px] text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10" />
-            </div>
-            <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-amrita-maroon py-3 text-[12px] font-semibold text-white hover:bg-amrita-maroonDark disabled:opacity-60">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Verify pass
-            </button>
+      <SectionHead title="Attendance verification" sub="Scan a student's wallet QR with the camera, or enter the pass ID manually" />
 
-            {result && (
-              <div className={`rounded-xl border p-4 ${result.state === 'valid' ? 'border-emerald-200 bg-emerald-50' : result.state === 'duplicate' ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'}`}>
-                <div className="flex items-center gap-2">
-                  <ResIcon className={`h-5 w-5 ${result.state === 'valid' ? 'text-emerald-600' : result.state === 'duplicate' ? 'text-amber-600' : 'text-red-600'}`} />
-                  <p className={`text-[13px] font-bold ${result.state === 'valid' ? 'text-emerald-800' : result.state === 'duplicate' ? 'text-amber-800' : 'text-red-800'}`}>
-                    {result.state === 'valid' ? 'Access granted' : result.state === 'duplicate' ? 'Already scanned' : 'Rejected'}
-                  </p>
-                </div>
-                {result.reg && (
-                  <div className="mt-3 border-t border-black/5 pt-3 text-[12px] text-amrita-slate">
-                    <p className="font-semibold text-amrita-ink">{result.reg.studentName || result.reg.name}</p>
-                    <p className="font-mono text-[11px]">{result.reg.registerNum} · {result.ev?.title}</p>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Scanner column */}
+        <div className="space-y-5">
+          <Panel title="QR scanner" subtitle={camOn ? 'Hold the student’s pass up to the camera' : 'Use the camera to check students in'}>
+            <div className="p-5">
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-amrita-line bg-amrita-maroonNight">
+                <video ref={videoRef} muted playsInline className={`h-full w-full object-cover ${camOn ? '' : 'hidden'}`} />
+                {camOn ? (
+                  <>
+                    <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                      <div className="relative h-44 w-44">
+                        {['left-0 top-0 border-l-2 border-t-2', 'right-0 top-0 border-r-2 border-t-2', 'left-0 bottom-0 border-l-2 border-b-2', 'right-0 bottom-0 border-r-2 border-b-2'].map((c) => (
+                          <span key={c} className={`absolute h-6 w-6 border-white/90 ${c}`} />
+                        ))}
+                        <span className="absolute inset-x-0 top-0 h-0.5 animate-scan-line bg-white/80" />
+                      </div>
+                    </div>
+                    <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-black/45 px-2 py-1 text-[10px] font-semibold text-white">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Scanning
+                    </span>
+                  </>
+                ) : (
+                  <div className="grid h-full w-full place-items-center text-center">
+                    <div>
+                      <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-white/10 text-white/80"><Camera className="h-6 w-6" /></span>
+                      <p className="mt-3 text-[12px] font-medium text-white/70">Camera is off</p>
+                    </div>
                   </div>
                 )}
-                <p className="mt-2 text-[11.5px] text-amrita-muted">{result.msg}</p>
               </div>
-            )}
-          </form>
-        </Panel>
 
+              {camError && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] font-medium text-amber-800">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {camError}
+                </div>
+              )}
+
+              <button onClick={camOn ? stopCam : startCam}
+                className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[12px] font-semibold transition-colors ${camOn ? 'border border-amrita-line bg-white text-amrita-ink hover:bg-amrita-panel' : 'bg-amrita-maroon text-white hover:bg-amrita-maroonDark'}`}>
+                {camOn ? <><CameraOff className="h-4 w-4" /> Stop camera</> : <><Camera className="h-4 w-4" /> Start camera</>}
+              </button>
+
+              <form onSubmit={verifyManual} className="mt-5 border-t border-amrita-lineSoft pt-5">
+                <label className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amrita-muted"><Keyboard className="h-3.5 w-3.5" /> Manual entry</label>
+                <div className="flex gap-2.5">
+                  <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="TKT-…"
+                    className="h-10 flex-1 rounded-xl border border-amrita-line bg-white px-3 font-mono text-[13px] text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10" />
+                  <button type="submit" className="inline-flex items-center gap-1.5 rounded-xl border border-amrita-line px-4 text-[12px] font-semibold text-amrita-ink hover:border-amrita-maroon hover:text-amrita-maroon"><CheckCircle2 className="h-4 w-4" /> Verify</button>
+                </div>
+              </form>
+            </div>
+          </Panel>
+
+          {result && (
+            <div className={`rounded-2xl border p-5 ${resBox}`}>
+              <div className="flex items-center gap-3">
+                <ResIcon className={`h-6 w-6 shrink-0 ${resIcon}`} />
+                <div>
+                  <p className={`text-[14px] font-bold ${resText}`}>{rc === 'valid' ? 'Access granted' : rc === 'duplicate' ? 'Already checked in' : 'Rejected'}</p>
+                  <p className="text-[11px] text-amrita-muted">Verified at {result.at}</p>
+                </div>
+              </div>
+              {result.reg ? (
+                <div className="mt-4 grid grid-cols-2 gap-4 border-t border-black/5 pt-4">
+                  <Meta k="Student" v={result.reg.studentName || result.reg.name} />
+                  <Meta k="Register No" v={result.reg.registerNum} mono />
+                  <Meta k="Department" v={result.reg.department} />
+                  <Meta k="Event" v={result.ev?.title} />
+                </div>
+              ) : (
+                <p className="mt-2 font-mono text-[11px] text-amrita-muted">Code: {result.code}</p>
+              )}
+              <p className="mt-3 text-[12px] text-amrita-slate">{result.msg}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Checked-in log */}
         <Panel title="Checked in today" subtitle={`${checkedToday.length} verified`}>
           {checkedToday.length === 0 ? (
-            <EmptyState icon={ScanLine} title="No check-ins yet" hint="Verified passes will appear here." />
+            <EmptyState icon={ScanLine} title="No check-ins yet" hint="Verified passes appear here as you scan them." />
           ) : (
-            <ul className="max-h-[420px] divide-y divide-amrita-lineSoft overflow-y-auto">
+            <ul className="max-h-[560px] divide-y divide-amrita-lineSoft overflow-y-auto">
               {checkedToday.map((r) => {
                 const ev = events.find((e) => e.id === r.eventId);
                 return (
-                  <li key={r.id} className="flex items-center gap-3 px-5 py-3.5">
+                  <li key={r.id} className="flex items-center gap-3 px-5 py-4">
                     <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600"><CheckCircle2 className="h-4 w-4" /></span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-semibold text-amrita-ink">{r.name || r.studentName}</p>
@@ -154,6 +258,14 @@ function Verification() {
           )}
         </Panel>
       </div>
+    </div>
+  );
+}
+function Meta({ k, v, mono }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-amrita-muted">{k}</p>
+      <p className={`mt-0.5 text-[12.5px] font-semibold text-amrita-ink ${mono ? 'font-mono text-[11px]' : ''}`}>{v || '—'}</p>
     </div>
   );
 }

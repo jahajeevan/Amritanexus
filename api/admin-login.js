@@ -4,6 +4,7 @@
 // hashed client check if this endpoint isn't deployed (e.g. static preview).
 import crypto from 'node:crypto';
 import { applyCors, readJson } from './_otp.js';
+import { signAdminToken } from './_supabase.js';
 
 const safeEqual = (a, b) => {
   const ba = Buffer.from(String(a));

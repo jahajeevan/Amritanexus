@@ -1,437 +1,611 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
 import Button from '../components/Button';
-import Input from '../components/Input';
 import QRCodePass from '../components/QRCodePass';
 import MapsEmbed from '../components/MapsEmbed';
-import { CountdownTimer } from './LandingView';
+import { EventCard, CountdownTimer } from './LandingView';
+import { Badge, EmptyState } from '../components/ui';
+import { statusBadgeClass, STATUS_TONE, seatInfo, formatEventDate, formatTime } from '../components/eventUi';
 import {
-  Calendar, MapPin, Clock, Users, ChevronLeft, Tag, Award,
-  CheckCircle, AlertCircle, Loader2, User, Mail, Phone,
-  Info, ArrowUpRight, GraduationCap
+  Calendar, MapPin, Clock, Users, ChevronLeft, ChevronRight, ChevronDown, Award,
+  CheckCircle2, AlertCircle, Loader2, User, Mail, Phone, IdCard, GraduationCap,
+  Info, ArrowUpRight, ArrowRight, ShieldCheck, Lock, Sparkles, HelpCircle, ListChecks,
+  CalendarClock, Images, Map as MapIcon, FileText,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const statusColors = {
-  'Open': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'Almost Full': 'bg-amber-50 text-amber-700 border-amber-200',
-  'Closed': 'bg-red-50 text-red-650 border-red-200',
-  'Upcoming': 'bg-[#E7E8EB]/20 text-[#7C1327] border-ignite-champagne',
-  'Completed': 'bg-[#F6F3EE] text-ignite-muted border-ignite-champagne',
-};
+/* ── helpers ─────────────────────────────────────────────── */
 
-function Tab({ id, label, active, onClick }) {
-  return (
-    <button
-      onClick={() => onClick(id)}
-      className={`text-[9px] font-bold uppercase tracking-widest py-4.5 px-3 border-b-2 transition-all whitespace-nowrap ${
-        active
-          ? 'border-ignite-crimson text-ignite-crimson font-black'
-          : 'border-transparent text-ignite-muted hover:text-ignite-text'
-      }`}
-    >
-      {label}
-    </button>
-  );
+function parseRules(rules) {
+  if (!rules) return [];
+  return String(rules)
+    .split(/\r?\n|(?:^|\s)\d+[.)]\s+/)
+    .map((s) => s.replace(/^\d+[.)]\s*/, '').trim())
+    .filter(Boolean);
 }
 
-function RegistrationForm({ event }) {
-  const { user, registerForEvent, registrations } = useData();
-  const [form, setForm] = useState({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', rollNo: user?.rollNo || '', year: user?.year || 'III' });
-  const [status, setStatus] = useState('idle'); // idle | success | error | loading
-  const [message, setMessage] = useState('');
-  const [ticket, setTicket] = useState(null);
+function normalizeCoordinators(event) {
+  if (Array.isArray(event.coordinators) && event.coordinators.length) return event.coordinators;
+  if (event.coordinator) return [{ name: event.coordinator, role: 'Faculty Coordinator' }];
+  return [];
+}
 
-  const existingReg = registrations.find(
-    r => r.eventId === event.id && (r.email === form.email || (user && r.rollNo === user.rollNo))
-  );
+const DEFAULT_FAQS = [
+  { q: 'What do I need to carry for entry?', a: 'Bring your Amrita student ID card and the QR entry pass from your dashboard. Gate coordinators scan the QR to mark your attendance.' },
+  { q: 'How is my attendance recorded?', a: 'Your pass QR is scanned at the venue gate. A verified check-in unlocks your participation certificate and adds credits to your department standing.' },
+  { q: 'Can I cancel my registration?', a: 'Yes. Open the pass from your student dashboard and cancel it to release your seat for another student.' },
+];
 
-  const seatsLeft = event.maxSeats - event.seatsFilled;
-  const isClosed = event.status === 'Closed' || seatsLeft <= 0;
-
-  if (existingReg) {
-    return (
-      <div className="rounded-3xl border border-emerald-100 bg-emerald-50/20 p-6 flex flex-col items-center shadow-soft">
-        <div className="flex items-center gap-2.5 mb-5 text-center">
-          <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
-          <div className="text-left">
-            <p className="font-bold text-emerald-800 text-sm">Pass Claimed Successfully</p>
-            <p className="text-[10px] text-emerald-650 font-mono mt-0.5">ID: {existingReg.ticketId}</p>
-          </div>
-        </div>
-        <QRCodePass registration={existingReg} />
-      </div>
-    );
+function normalizeFaqs(event) {
+  if (Array.isArray(event.faqs) && event.faqs.length) {
+    return event.faqs.map((f) => ({ q: f.q || f.question, a: f.a || f.answer })).filter((f) => f.q && f.a);
   }
+  return DEFAULT_FAQS;
+}
 
-  if (status === 'success' && ticket) {
-    return (
-      <div className="rounded-3xl border border-emerald-100 bg-emerald-50/20 p-6 flex flex-col items-center shadow-soft">
-        <div className="flex items-center gap-2.5 mb-5 text-center">
-          <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
-          <div className="text-left">
-            <p className="font-bold text-emerald-800 text-sm">Pass Claimed Successfully</p>
-            <p className="text-[10px] text-emerald-650 font-mono mt-0.5">ID: {ticket.ticketId}</p>
-          </div>
-        </div>
-        <QRCodePass registration={ticket} />
-      </div>
-    );
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage('');
-    if (isClosed) return;
-    
-    if (!form.name || !form.email || !form.rollNo) {
-      setStatus('error');
-      setMessage('Please fill out all required fields.');
-      return;
-    }
-
-    setStatus('loading');
-    await new Promise(r => setTimeout(r, 600));
-
-    const result = registerForEvent({
-      studentName: form.name,
-      registerNum: form.rollNo,
-      department: user?.department || 'Computer Science',
-      year: form.year,
-      email: form.email,
-      phone: form.phone,
-    }, event.id);
-
-    if (result.success) {
-      setTicket(result.registration);
-      setStatus('success');
-    } else {
-      setStatus('error');
-      setMessage(result.message || 'Registration failed.');
-    }
-  };
-
+function SectionTitle({ icon: Icon, children, hint }) {
   return (
-    <div className="border border-ignite-champagne rounded-3xl p-6 bg-white shadow-soft">
-      <h3 className="font-display font-bold text-ignite-text text-[10px] mb-5 uppercase tracking-widest">Registration Portal</h3>
-
-      {isClosed ? (
-        <div className="p-5 rounded-2xl bg-red-50 border border-red-100 text-center space-y-2.5">
-          <AlertCircle className="h-5 w-5 text-red-500 mx-auto" />
-          <p className="font-bold text-red-800 text-xs uppercase tracking-wider">Registration Closed</p>
-          <p className="text-[10px] text-red-650 leading-normal font-bold">No additional seats available for this event.</p>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input label="Student Name" placeholder="Rohan Sharma" icon={User} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
-          <Input label="University Email Address" type="email" placeholder="you@cb.students.amrita.edu" icon={Mail} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
-          
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Register Number" placeholder="CB.EN.U4CSE23001" value={form.rollNo} onChange={e => setForm({ ...form, rollNo: e.target.value })} required />
-            <div>
-              <label className="block text-[11px] font-bold text-ignite-muted uppercase tracking-wider mb-2">Academic Year</label>
-              <select
-                value={form.year}
-                onChange={e => setForm({ ...form, year: e.target.value })}
-                className="w-full h-11 border border-ignite-champagne rounded-xl text-xs font-bold text-ignite-text px-3 bg-[#FAF9F6] focus:border-ignite-accent outline-none transition-all"
-              >
-                {['I', 'II', 'III', 'IV'].map(yr => <option key={yr} value={yr}>{yr} Year</option>)}
-              </select>
-            </div>
-          </div>
-
-          <Input label="Contact Number" type="tel" placeholder="+91 XXXXX XXXXX" icon={Phone} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-
-          {status === 'error' && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-700 flex items-center gap-2">
-              <AlertCircle className="h-4.5 w-4.5 text-red-500 shrink-0" />
-              <span>{message}</span>
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            variant="crimson"
-            className="w-full h-12 text-[10px] font-bold uppercase tracking-widest mt-6 rounded-xl"
-            disabled={status === 'loading'}
-            icon={status === 'loading' ? Loader2 : CheckCircle}
-          >
-            {status === 'loading' ? 'Securing Seat...' : 'Claim Digital Pass'}
-          </Button>
-        </form>
-      )}
+    <div className="mb-4">
+      <h2 className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-wide text-amrita-ink">
+        {Icon && <Icon className="h-4 w-4 text-amrita-maroon" aria-hidden />}
+        {children}
+      </h2>
+      {hint && <p className="mt-1 text-[12px] text-amrita-muted">{hint}</p>}
     </div>
   );
 }
 
-export default function EventDetailsView({ eventId, setView }) {
-  const { events } = useData();
-  const event = events.find(e => e.id === eventId);
-  const [tab, setTab] = useState('details');
+/* ── registration card (auth-gated, confirmation-based) ──── */
 
-  if (!event) {
+function RegistrationCard({ event, setView }) {
+  const { user, registrations, registerForEvent } = useData();
+  const [status, setStatus] = useState('idle'); // idle | loading | success | error
+  const [message, setMessage] = useState('');
+  const [ticket, setTicket] = useState(null);
+
+  const { seatsLeft, isClosed } = seatInfo(event);
+
+  const myReg = useMemo(() => {
+    if (!user) return null;
+    const reg = (user.rollNo || user.registerNum || '').toUpperCase();
+    return registrations.find(
+      (r) =>
+        r.eventId === event.id &&
+        r.status !== 'Cancelled' &&
+        ((r.email && user.email && r.email.toLowerCase() === user.email.toLowerCase()) ||
+          (reg && (r.registerNum || '').toUpperCase() === reg)),
+    );
+  }, [user, registrations, event.id]);
+
+  const shell =
+    'rounded-2xl border border-amrita-line bg-white shadow-xs';
+
+  // Already registered (or just registered) → show the pass.
+  const claimed = ticket || myReg;
+  if (claimed) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#FAF9F6]">
-        <AlertCircle className="h-10 w-10 text-ignite-accent" />
-        <p className="text-ignite-text font-bold">Event credentials not found</p>
-        <Button onClick={() => setView('events')} variant="outline" icon={ChevronLeft}>Back to Events</Button>
+      <div className={`${shell} overflow-hidden`}>
+        <div className="flex items-center gap-2.5 border-b border-amrita-lineSoft bg-emerald-50/60 px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
+          <div>
+            <p className="text-[13px] font-bold text-emerald-800">Pass confirmed</p>
+            <p className="font-mono text-[11px] text-emerald-700">ID: {claimed.ticketId || claimed.id}</p>
+          </div>
+        </div>
+        <div className="p-5">
+          <QRCodePass registration={claimed} />
+          <button
+            onClick={() => setView('dashboard')}
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amrita-line py-2.5 text-[12.5px] font-semibold text-amrita-ink transition-colors hover:border-amrita-maroon hover:text-amrita-maroon"
+          >
+            View in my dashboard <ArrowRight className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
       </div>
     );
   }
 
-  const seatsLeft = event.maxSeats - event.seatsFilled;
-  const pct = Math.round((event.seatsFilled / event.maxSeats) * 100);
+  // Anonymous visitor → auth gate.
+  if (!user) {
+    return (
+      <div className={`${shell} p-6`}>
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-amrita-maroonSoft text-amrita-maroon">
+          <Lock className="h-5 w-5" aria-hidden />
+        </span>
+        <h3 className="mt-4 text-[15px] font-bold text-amrita-ink">Sign in to register</h3>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-amrita-muted">
+          You can browse every detail freely. To claim an entry pass, sign in with your Amrita
+          student email.
+        </p>
+        <Button onClick={() => setView('signin')} variant="primary" className="mt-5 h-11 w-full text-[13px]" icon={ArrowRight}>
+          Sign in to register
+        </Button>
+        <p className="mt-3 text-center text-[11px] text-amrita-faint">
+          Only official <span className="font-semibold text-amrita-slate">@cb.students.amrita.edu</span> accounts can register.
+        </p>
+      </div>
+    );
+  }
+
+  // Signed in but registration is closed / full.
+  if (isClosed) {
+    return (
+      <div className={`${shell} p-6`}>
+        <span className="grid h-11 w-11 place-items-center rounded-xl bg-red-50 text-red-600">
+          <AlertCircle className="h-5 w-5" aria-hidden />
+        </span>
+        <h3 className="mt-4 text-[15px] font-bold text-amrita-ink">Registration closed</h3>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-amrita-muted">
+          {seatsLeft <= 0
+            ? 'Every seat for this event has been claimed. Explore other open events across campus.'
+            : 'Registration for this event is no longer open.'}
+        </p>
+        <Button onClick={() => setView('events')} variant="outline" className="mt-5 h-11 w-full text-[13px]" icon={ArrowRight}>
+          Browse other events
+        </Button>
+      </div>
+    );
+  }
+
+  // Signed in + open → confirmation screen (read-only profile).
+  const registerNum = user.rollNo || user.registerNum || '—';
+  const rows = [
+    { icon: User, label: 'Name', value: user.name },
+    { icon: Mail, label: 'University email', value: user.email },
+    { icon: IdCard, label: 'Register number', value: registerNum, mono: true },
+    { icon: GraduationCap, label: 'Department', value: user.department },
+    { icon: CalendarClock, label: 'Academic year', value: user.year ? `Year ${user.year}` : '—' },
+    { icon: Phone, label: 'Phone', value: user.phone || '—' },
+  ];
+
+  const handleConfirm = async () => {
+    setStatus('loading');
+    setMessage('');
+    const res = await registerForEvent(
+      {
+        studentName: user.name,
+        registerNum: user.rollNo || user.registerNum,
+        department: user.department,
+        year: user.year,
+        email: user.email,
+        phone: user.phone,
+      },
+      event.id,
+    );
+    if (res?.success) {
+      setTicket(res.registration);
+      setStatus('success');
+    } else {
+      setStatus('error');
+      setMessage(res?.message || 'Registration could not be completed. Please try again.');
+    }
+  };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="min-h-screen bg-[#FAF9F6] py-12 relative overflow-hidden"
-    >
-      {/* Background blobs */}
-      <div className="bg-blob bg-blob-gold top-1/4 right-0 w-[450px] h-[450px]" />
-      <div className="bg-blob bg-blob-champagne bottom-1/4 left-0 w-[450px] h-[450px]" />
+    <div className={`${shell} overflow-hidden`}>
+      <div className="border-b border-amrita-lineSoft px-5 py-4">
+        <h3 className="text-[14px] font-bold text-amrita-ink">Confirm your registration</h3>
+        <p className="mt-0.5 text-[12px] text-amrita-muted">Your profile is pre-filled — just confirm to claim your pass.</p>
+      </div>
 
-      <div className="mx-auto max-w-7xl px-5 lg:px-8 relative z-10">
-        
-        {/* Navigation Breadcrumb */}
-        <button 
-          onClick={() => setView('events')} 
-          className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-ignite-muted hover:text-ignite-accent mb-8 transition-all"
+      <dl className="divide-y divide-amrita-lineSoft px-5">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-center gap-3 py-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amrita-panel text-amrita-muted">
+              <r.icon className="h-4 w-4" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <dt className="text-[10.5px] font-medium uppercase tracking-wide text-amrita-muted">{r.label}</dt>
+              <dd className={`truncate text-[13px] font-semibold text-amrita-ink ${r.mono ? 'font-mono' : ''}`}>{r.value || '—'}</dd>
+            </div>
+          </div>
+        ))}
+      </dl>
+
+      <div className="space-y-3 px-5 pb-5 pt-1">
+        {status === 'error' && (
+          <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-[12px] font-semibold text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden />
+            <span>{message}</span>
+          </div>
+        )}
+        <Button
+          onClick={handleConfirm}
+          variant="primary"
+          disabled={status === 'loading'}
+          className="h-12 w-full text-[13px]"
+          icon={status === 'loading' ? Loader2 : CheckCircle2}
         >
-          <ChevronLeft className="h-4 w-4" />
-          Back to Events Directory
+          {status === 'loading' ? 'Claiming pass…' : 'Confirm & claim pass'}
+        </Button>
+        <p className="flex items-center justify-center gap-1.5 text-[11px] text-amrita-faint">
+          <ShieldCheck className="h-3.5 w-3.5 text-amrita-maroon" aria-hidden />
+          A QR entry pass is issued instantly on confirmation.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── FAQ accordion ───────────────────────────────────────── */
+
+function Faq({ q, a }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-amrita-line bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+      >
+        <span className="text-[13px] font-semibold text-amrita-ink">{q}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-amrita-muted transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <p className="px-4 pb-4 text-[12.5px] leading-relaxed text-amrita-slate">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── tab bar ─────────────────────────────────────────────── */
+
+function TabBar({ tabs, active, onSelect }) {
+  return (
+    <div className="flex gap-1 overflow-x-auto border-b border-amrita-lineSoft px-2" role="tablist">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          role="tab"
+          aria-selected={active === t.id}
+          onClick={() => onSelect(t.id)}
+          className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-3.5 py-3.5 text-[12.5px] font-semibold transition-colors ${
+            active === t.id
+              ? 'border-amrita-maroon text-amrita-maroon'
+              : 'border-transparent text-amrita-muted hover:text-amrita-ink'
+          }`}
+        >
+          <t.icon className="h-4 w-4" aria-hidden />
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── main view ───────────────────────────────────────────── */
+
+export default function EventDetailsView({ eventId, setView }) {
+  const { events } = useData();
+  const event = events.find((e) => e.id === eventId);
+  const [tab, setTab] = useState('overview');
+
+  if (!event) {
+    return (
+      <div className="grid min-h-[70vh] place-items-center bg-amrita-canvas px-5">
+        <div className="text-center">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-amrita-maroonSoft text-amrita-maroon">
+            <AlertCircle className="h-6 w-6" aria-hidden />
+          </span>
+          <h1 className="mt-4 text-xl font-bold text-amrita-ink">Event not found</h1>
+          <p className="mt-1 text-[13px] text-amrita-muted">This event may have been removed or the link is out of date.</p>
+          <Button onClick={() => setView('events')} variant="outline" className="mt-5 h-10 text-[13px]" icon={ArrowRight}>
+            Back to events
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const { seatsLeft, pct, isOpen } = seatInfo(event);
+  const rules = parseRules(event.rules);
+  const coordinators = normalizeCoordinators(event);
+  const faqs = normalizeFaqs(event);
+  const schedule = Array.isArray(event.schedule) ? event.schedule : [];
+  const gallery = Array.isArray(event.gallery) ? event.gallery : [];
+
+  const related = events
+    .filter((e) => e.id !== event.id)
+    .sort((a, b) => {
+      const score = (e) => (e.category === event.category ? 2 : 0) + (e.department === event.department ? 1 : 0);
+      return score(b) - score(a) || new Date(a.date) - new Date(b.date);
+    })
+    .slice(0, 3);
+
+  const facts = [
+    { icon: Calendar, label: 'Date', value: formatEventDate(event.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) },
+    { icon: Clock, label: 'Start time', value: formatTime(event.time) },
+    { icon: MapPin, label: 'Venue', value: event.venue },
+    { icon: Users, label: 'Capacity', value: `${event.maxSeats} seats` },
+  ];
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: FileText },
+    { id: 'schedule', label: 'Schedule', icon: CalendarClock },
+    { id: 'gallery', label: 'Gallery', icon: Images },
+    { id: 'location', label: 'Location', icon: MapIcon },
+  ];
+
+  return (
+    <div className="min-h-screen bg-amrita-canvas">
+      <div className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+        <button
+          onClick={() => setView('events')}
+          className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-amrita-muted transition-colors hover:text-amrita-maroon"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden /> Back to events
         </button>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          
-          {/* Main Column */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Header info */}
-            <div className="bg-white border border-ignite-champagne rounded-3xl overflow-hidden shadow-soft">
-              <div className="h-64 bg-gradient-to-br from-[#FAF9F6] via-ignite-champagne to-white relative overflow-hidden flex items-center justify-center border-b border-ignite-champagne/40">
-                {event.gallery && event.gallery[0] ? (
-                  <img src={event.gallery[0].url} alt={event.title} className="w-full h-full object-cover" />
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          {/* ── main column ─────────────────────────────── */}
+          <div className="space-y-6 lg:col-span-2">
+            {/* hero */}
+            <div className="overflow-hidden rounded-2xl border border-amrita-line bg-white shadow-xs">
+              <div className="relative h-52 overflow-hidden border-b border-amrita-lineSoft bg-amrita-panel sm:h-64">
+                {gallery[0] ? (
+                  <img src={gallery[0].url} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex flex-col items-center justify-center">
-                    <GraduationCap className="h-16 w-16 text-ignite-accent/25" />
-                    <span className="text-[10px] text-ignite-accent/50 font-bold uppercase tracking-wider mt-2.5">{event.category}</span>
+                  <div className="dot-grid flex h-full w-full flex-col items-center justify-center">
+                    <GraduationCap className="h-12 w-12 text-amrita-maroon/25" aria-hidden />
+                    <span className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-amrita-maroon/60">{event.category}</span>
                   </div>
                 )}
-                <span className={`absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider px-3.5 py-1 rounded border backdrop-blur-md ${statusColors[event.status] || statusColors['Open']}`}>
+                <span className={`absolute right-4 top-4 rounded-md border px-2.5 py-1 text-[11px] font-semibold shadow-xs ${statusBadgeClass(event.status)}`}>
                   {event.status}
                 </span>
               </div>
 
-              <div className="p-6 md:p-8">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-ignite-crimson bg-ignite-crimson/[0.06] border border-ignite-crimson/20 px-3 py-1 rounded inline-block">
-                  {event.category} · {event.department} Department
-                </span>
-                <h1 className="mt-4 text-3xl md:text-4xl font-display font-bold text-ignite-text leading-tight">{event.title}</h1>
-                
-                {event.status !== 'Closed' && event.status !== 'Completed' && (
-                  <div className="mt-5">
-                    <CountdownTimer targetDate={event.date} targetTime={event.time} />
-                  </div>
-                )}
+              <div className="p-6 sm:p-7">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="maroon">{event.category}</Badge>
+                  <Badge>{event.department}</Badge>
+                  <Badge tone={STATUS_TONE[event.status] || 'neutral'}>{event.status}</Badge>
+                </div>
+                <h1 className="mt-4 text-[1.9rem] font-extrabold leading-[1.1] tracking-tight text-amrita-ink sm:text-4xl">
+                  {event.title}
+                </h1>
 
-                <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-5 border-t border-ignite-champagne/60 pt-8">
-                  {[
-                    { icon: Calendar, label: 'Event Date', value: event.date },
-                    { icon: Clock, label: 'Start Time', value: event.time },
-                    { icon: MapPin, label: 'Venue Location', value: event.venue },
-                    { icon: Users, label: 'Max Seating', value: `${event.maxSeats} capacity` },
-                  ].map(({ icon: Icon, label, value }) => (
-                    <div key={label} className="text-left">
-                      <div className="h-9 w-9 bg-white border border-ignite-champagne rounded-xl flex items-center justify-center mb-3.5 text-ignite-accent shadow-sm">
-                        <Icon className="h-4.5 w-4.5" />
-                      </div>
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-ignite-muted">{label}</p>
-                      <p className="text-xs font-bold text-ignite-text mt-1">{value}</p>
+                {/* seat bar + countdown */}
+                <div className="mt-6 space-y-3 rounded-xl border border-amrita-line bg-amrita-canvas p-4">
+                  <div className="flex items-center justify-between text-[12px] font-semibold">
+                    <span className="flex items-center gap-1.5 text-amrita-slate">
+                      <Users className="h-4 w-4 text-amrita-maroon" aria-hidden />
+                      {isOpen ? `${seatsLeft} of ${event.maxSeats} seats left` : 'Registration closed'}
+                    </span>
+                    <span className="tabular-nums text-amrita-muted">{pct}% full</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-amrita-panel">
+                    <div className="h-full rounded-full bg-amrita-maroon transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                  {isOpen && (
+                    <div className="pt-1">
+                      <CountdownTimer targetDate={event.date} targetTime={event.time} variant="blocks" />
+                    </div>
+                  )}
+                </div>
+
+                {/* quick facts */}
+                <div className="mt-6 grid grid-cols-2 gap-4 border-t border-amrita-lineSoft pt-6 sm:grid-cols-4">
+                  {facts.map((f) => (
+                    <div key={f.label}>
+                      <span className="grid h-9 w-9 place-items-center rounded-lg bg-amrita-maroonSoft text-amrita-maroon">
+                        <f.icon className="h-4 w-4" aria-hidden />
+                      </span>
+                      <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-amrita-muted">{f.label}</p>
+                      <p className="mt-0.5 text-[12.5px] font-semibold text-amrita-ink">{f.value}</p>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Layout tabs details */}
-            <div className="bg-white border border-ignite-champagne rounded-3xl overflow-hidden shadow-soft">
-              <div className="border-b border-ignite-champagne px-6 flex gap-6 overflow-x-auto bg-[#F6F3EE]/40">
-                {[
-                  { id: 'details', label: 'Program Details' },
-                  { id: 'schedule', label: 'Timeline Timeline' },
-                  { id: 'gallery', label: 'Event Gallery' },
-                  { id: 'map', label: 'Directions & Map' },
-                ].map(t => <Tab key={t.id} {...t} active={tab === t.id} onClick={setTab} />)}
-              </div>
+            {/* tabbed content */}
+            <div className="overflow-hidden rounded-2xl border border-amrita-line bg-white shadow-xs">
+              <TabBar tabs={tabs} active={tab} onSelect={setTab} />
 
-              <div className="p-6 md:p-8">
-                {tab === 'details' && (
+              <div className="p-6 sm:p-7">
+                {tab === 'overview' && (
                   <div className="space-y-8">
-                    <div>
-                      <h2 className="text-[10px] font-bold uppercase tracking-widest text-ignite-text mb-3">About the Event</h2>
-                      <p className="text-xs leading-relaxed text-ignite-muted font-semibold">{event.description || 'No description provided.'}</p>
-                    </div>
+                    <section>
+                      <SectionTitle icon={Info}>About this event</SectionTitle>
+                      <p className="text-[13.5px] leading-relaxed text-amrita-slate">
+                        {event.description || 'No description has been provided for this event yet.'}
+                      </p>
+                    </section>
 
-                    {event.rules && (
-                      <div>
-                        <h2 className="text-[10px] font-bold uppercase tracking-widest text-ignite-text mb-4">Rules & Guidelines</h2>
-                        <ul className="space-y-3.5 text-xs text-ignite-muted font-semibold">
-                          {event.rules.split('\n').map((rule, idx) => (
-                            <li key={idx} className="flex gap-3 items-start">
-                              <span className="h-5 w-5 rounded bg-ignite-accent/10 text-[#7C1327] text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5 border border-ignite-accent/20">{idx + 1}</span>
-                              <span className="leading-relaxed pt-0.5">{rule}</span>
+                    {rules.length > 0 && (
+                      <section>
+                        <SectionTitle icon={ListChecks}>Rules &amp; guidelines</SectionTitle>
+                        <ul className="space-y-2.5">
+                          {rules.map((rule, i) => (
+                            <li key={i} className="flex gap-3">
+                              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-amrita-maroonSoft text-[10px] font-bold text-amrita-maroon">{i + 1}</span>
+                              <span className="text-[13px] leading-relaxed text-amrita-slate">{rule}</span>
                             </li>
                           ))}
                         </ul>
-                      </div>
+                      </section>
                     )}
 
                     {event.prizes && (
-                      <div className="border border-ignite-champagne bg-ignite-secondary/40 rounded-2xl p-6 shadow-sm">
-                        <div className="flex items-center gap-2.5 mb-3 text-ignite-accent">
-                          <Award className="h-5 w-5" />
-                          <h2 className="text-[10px] font-bold uppercase tracking-widest text-ignite-text">Prizes & Recognition</h2>
-                        </div>
-                        <p className="text-xs text-ignite-muted leading-relaxed font-semibold">{event.prizes}</p>
-                      </div>
+                      <section className="rounded-xl border border-amrita-line bg-amrita-canvas p-5">
+                        <SectionTitle icon={Award}>Prizes &amp; recognition</SectionTitle>
+                        <p className="text-[13px] leading-relaxed text-amrita-slate">{event.prizes}</p>
+                      </section>
                     )}
 
-                    {(event.coordinator || (event.coordinators && event.coordinators.length > 0)) && (
-                      <div>
-                        <h2 className="text-[10px] font-bold uppercase tracking-widest text-ignite-text mb-4">Coordinators Desk</h2>
-                        <div className="grid md:grid-cols-2 gap-4">
-                          {event.coordinators && event.coordinators.length > 0 ? (
-                            event.coordinators.map((c, i) => (
-                              <div key={i} className="p-5 border border-ignite-champagne rounded-2xl bg-[#FAF9F6] shadow-sm">
-                                <p className="font-bold text-xs text-ignite-text uppercase tracking-wider">{c.name}</p>
-                                {c.email && <p className="text-[10px] text-ignite-muted mt-2.5 flex items-center gap-2 font-semibold"><Mail className="h-4 w-4 text-ignite-accent" /> {c.email}</p>}
-                                {c.phone && <p className="text-[10px] text-ignite-muted mt-1.5 flex items-center gap-2 font-semibold"><Phone className="h-4 w-4 text-ignite-accent" /> {c.phone}</p>}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="p-5 border border-ignite-champagne rounded-2xl bg-[#FAF9F6] shadow-sm">
-                              <p className="font-bold text-xs text-ignite-text uppercase tracking-wider">{event.coordinator}</p>
-                              <p className="text-[10px] text-ignite-muted mt-1.5 font-semibold">Faculty Coordinator</p>
+                    {coordinators.length > 0 && (
+                      <section>
+                        <SectionTitle icon={User}>Coordinators</SectionTitle>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {coordinators.map((c, i) => (
+                            <div key={i} className="rounded-xl border border-amrita-line bg-white p-4">
+                              <p className="text-[13px] font-bold text-amrita-ink">{c.name}</p>
+                              <p className="text-[11.5px] font-medium text-amrita-muted">{c.role || 'Faculty Coordinator'}</p>
+                              {c.email && (
+                                <p className="mt-2 flex items-center gap-2 text-[12px] text-amrita-slate">
+                                  <Mail className="h-3.5 w-3.5 text-amrita-maroon" aria-hidden /> {c.email}
+                                </p>
+                              )}
+                              {c.phone && (
+                                <p className="mt-1 flex items-center gap-2 text-[12px] text-amrita-slate">
+                                  <Phone className="h-3.5 w-3.5 text-amrita-maroon" aria-hidden /> {c.phone}
+                                </p>
+                              )}
                             </div>
-                          )}
+                          ))}
                         </div>
-                      </div>
+                      </section>
                     )}
+
+                    <section>
+                      <SectionTitle icon={HelpCircle}>Frequently asked</SectionTitle>
+                      <div className="space-y-2.5">
+                        {faqs.map((f, i) => (
+                          <Faq key={i} q={f.q} a={f.a} />
+                        ))}
+                      </div>
+                    </section>
                   </div>
                 )}
 
                 {tab === 'schedule' && (
-                  <div className="py-2">
-                    {event.schedule && event.schedule.length > 0 ? (
-                      <div className="relative pl-6 border-l border-ignite-accent/20 ml-2.5 space-y-6">
-                        {event.schedule.map((sch, i) => (
-                          <div key={i} className="relative">
-                            <div className="absolute -left-[31px] top-1.5 h-3 w-3 rounded-full bg-white border-2 border-ignite-accent flex items-center justify-center shadow-soft">
-                              <div className="h-1 w-1 rounded-full bg-ignite-accent" />
-                            </div>
-                            <span className="text-[9px] font-mono font-bold text-ignite-accent">{sch.time}</span>
-                            <h4 className="text-xs font-bold text-ignite-text mt-1 uppercase tracking-wider">{sch.title}</h4>
-                            {sch.description && <p className="text-xs text-ignite-muted leading-relaxed font-semibold mt-1">{sch.description}</p>}
-                          </div>
+                  <div>
+                    <SectionTitle icon={CalendarClock} hint="How the day unfolds, session by session.">
+                      Schedule &amp; timeline
+                    </SectionTitle>
+                    {schedule.length > 0 ? (
+                      <ol className="relative ml-2 space-y-6 border-l border-amrita-line pl-6">
+                        {schedule.map((s, i) => (
+                          <li key={i} className="relative">
+                            <span className="absolute -left-[30px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full border-2 border-amrita-maroon bg-white">
+                              <span className="h-1 w-1 rounded-full bg-amrita-maroon" />
+                            </span>
+                            <span className="font-mono text-[11px] font-bold text-amrita-maroon">{s.time}</span>
+                            <h4 className="mt-1 text-[13.5px] font-bold text-amrita-ink">{s.title}</h4>
+                            {s.description && <p className="mt-1 text-[12.5px] leading-relaxed text-amrita-slate">{s.description}</p>}
+                          </li>
                         ))}
-                      </div>
+                      </ol>
                     ) : (
-                      <div className="text-center py-12">
-                        <Info className="h-8 w-8 text-ignite-accent/20 mx-auto" />
-                        <p className="text-xs text-ignite-muted font-bold mt-3">Timeline Under Verification</p>
-                      </div>
+                      <EmptyState icon={CalendarClock} title="Timeline coming soon" hint="Coordinators will publish the session-by-session schedule closer to the event date." />
                     )}
                   </div>
                 )}
 
                 {tab === 'gallery' && (
                   <div>
-                    {event.gallery && event.gallery.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {event.gallery.map((img, i) => (
-                          <div key={i} className="group relative rounded-2xl overflow-hidden shadow-soft h-32 md:h-40 bg-[#FAF9F6] border border-ignite-champagne">
-                            <img src={img.url} alt={img.caption || 'Gallery'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <SectionTitle icon={Images} hint="Moments from this event and past editions.">Gallery</SectionTitle>
+                    {gallery.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {gallery.map((img, i) => (
+                          <figure key={i} className="group relative h-32 overflow-hidden rounded-xl border border-amrita-line bg-amrita-panel sm:h-40">
+                            <img src={img.url} alt={img.caption || 'Event gallery image'} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                             {img.caption && (
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3 text-white">
-                                <span className="text-[10px] font-bold truncate">{img.caption}</span>
-                              </div>
+                              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 text-[11px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
+                                {img.caption}
+                              </figcaption>
                             )}
-                          </div>
+                          </figure>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-12">
-                        <Info className="h-8 w-8 text-ignite-accent/20 mx-auto" />
-                        <p className="text-xs text-ignite-muted font-bold mt-3">No images posted in gallery yet</p>
-                      </div>
+                      <EmptyState icon={Images} title="No photos yet" hint="Gallery images will appear here once coordinators upload them." />
                     )}
                   </div>
                 )}
 
-                {tab === 'map' && (
-                  <div className="space-y-5">
-                    <MapsEmbed venueName={`${event.venue}, Amrita Vishwa Vidyapeetham, Ettimadai, Coimbatore`} className="rounded-2xl overflow-hidden border border-ignite-champagne h-64 shadow-inner" />
-                    {event.mapsLink && (
-                      <a 
-                        href={event.mapsLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-[9px] font-bold text-ignite-primary hover:text-white border border-ignite-champagne bg-[#F6F3EE] hover:bg-ignite-primary rounded-xl px-5 py-3 transition-all uppercase tracking-widest shadow-soft"
-                      >
-                        Navigate on Google Maps
-                        <ArrowUpRight className="h-4 w-4 text-ignite-accent" />
-                      </a>
-                    )}
+                {tab === 'location' && (
+                  <div>
+                    <SectionTitle icon={MapIcon} hint={`${event.venue} · Amrita Vishwa Vidyapeetham, Ettimadai, Coimbatore`}>
+                      Directions &amp; map
+                    </SectionTitle>
+                    <MapsEmbed
+                      mapsLink={event.mapsLink}
+                      venueName={`${event.venue}, Amrita Vishwa Vidyapeetham, Ettimadai, Coimbatore`}
+                    />
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Sidebar (Register Card) */}
-          <div className="space-y-6">
-            
-            {/* Live Seating Metrics */}
-            <div className="bg-white border border-ignite-champagne rounded-3xl p-6 shadow-soft">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-[9px] font-bold text-ignite-text uppercase tracking-widest">Seats Availability</span>
-                <span className="text-xs font-black text-ignite-accent">{seatsLeft} / {event.maxSeats}</span>
-              </div>
-              
-              <div className="h-1.5 rounded-full bg-ignite-secondary border border-ignite-champagne/20 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#7C1327] to-[#9E1B32] transition-all duration-700"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
+          {/* ── sidebar ─────────────────────────────────── */}
+          <aside className="lg:col-span-1">
+            <div className="space-y-5 lg:sticky lg:top-24">
+              <RegistrationCard event={event} setView={setView} />
 
-              <p className="text-[9px] font-bold text-ignite-muted mt-2 text-right">{pct}% Booked</p>
-            </div>
-
-            {/* Registration widget panel */}
-            <RegistrationForm event={event} />
-
-            {/* Points multiplier */}
-            {event.points && (
-              <div className="bg-gradient-to-br from-white to-[#FAF9F6] border border-ignite-champagne rounded-3xl p-6 shadow-soft">
-                <div className="flex items-center gap-2 mb-2 text-ignite-accent">
-                  <Tag className="h-4.5 w-4.5" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest">Participation Points</span>
+              {event.points != null && (
+                <div className="rounded-2xl border border-amrita-line bg-white p-5 shadow-xs">
+                  <div className="flex items-center gap-2 text-amrita-maroon">
+                    <Sparkles className="h-4 w-4" aria-hidden />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide">Participation credits</span>
+                  </div>
+                  <p className="mt-2 text-[26px] font-extrabold tracking-tight text-amrita-ink">
+                    +{event.points} <span className="text-[13px] font-semibold text-amrita-muted">credits</span>
+                  </p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-amrita-muted">
+                    Credited to your department standing once your pass is scanned at the gate.
+                  </p>
                 </div>
-                <p className="text-3xl font-black text-ignite-text">+{event.points} <span className="text-xs font-bold text-ignite-muted">Credits</span></p>
-                <p className="text-[9px] font-bold text-ignite-muted mt-2 leading-normal">
-                  Points are credited to department score sheets upon gate scan verification.
-                </p>
+              )}
+
+              <div className="rounded-2xl border border-amrita-line bg-white p-5 shadow-xs">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amrita-muted">At a glance</p>
+                <dl className="mt-3 space-y-3">
+                  {facts.map((f) => (
+                    <div key={f.label} className="flex items-center gap-3">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amrita-panel text-amrita-muted">
+                        <f.icon className="h-4 w-4" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <dt className="text-[10.5px] font-medium uppercase tracking-wide text-amrita-muted">{f.label}</dt>
+                        <dd className="truncate text-[12.5px] font-semibold text-amrita-ink">{f.value}</dd>
+                      </div>
+                    </div>
+                  ))}
+                </dl>
               </div>
-            )}
-          </div>
-          
+            </div>
+          </aside>
         </div>
 
+        {/* ── related events ───────────────────────────── */}
+        {related.length > 0 && (
+          <section className="mt-14">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-amrita-maroon">
+                  <span className="h-1 w-1 rounded-full bg-amrita-maroon" /> More on campus
+                </span>
+                <h2 className="mt-3 text-2xl font-bold tracking-tight text-amrita-ink">Related events</h2>
+              </div>
+              <button
+                onClick={() => setView('events')}
+                className="inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold text-amrita-maroon hover:text-amrita-maroonDark"
+              >
+                View all <ChevronRight className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((e) => (
+                <EventCard key={e.id} event={e} onView={() => setView(`eventDetail:${e.id}`)} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 }
