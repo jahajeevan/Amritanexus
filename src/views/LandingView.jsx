@@ -4,7 +4,7 @@ import Button from '../components/Button';
 import {
   Calendar, MapPin, Users, ArrowRight, ChevronRight, QrCode, Award, ShieldCheck,
   Trophy, LayoutDashboard, ScanLine, CheckCircle2, Clock, GraduationCap, UserPlus,
-  Code2, FlaskConical, Music4, Rocket, Lightbulb, Users2, CalendarCheck,
+  Code2, FlaskConical, Music4, Rocket, Lightbulb, Users2, CalendarCheck, User,
 } from 'lucide-react';
 import { motion, useInView } from 'framer-motion';
 import { statusBadgeClass, seatInfo, formatEventDate, isEventVisible } from '../components/eventUi';
@@ -141,6 +141,9 @@ export function EventCard({ event, onView }) {
         <div className="mt-4 grid grid-cols-2 gap-2 text-[12px] text-amrita-slate">
           <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-amrita-faint" aria-hidden />{formatEventDate(event.date)}</span>
           <span className="flex min-w-0 items-center gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0 text-amrita-faint" aria-hidden /><span className="truncate">{event.venue}</span></span>
+          {event.coordinator && (
+            <span className="col-span-2 flex min-w-0 items-center gap-1.5"><User className="h-3.5 w-3.5 shrink-0 text-amrita-faint" aria-hidden /><span className="truncate">{event.coordinator}</span></span>
+          )}
         </div>
 
         <div className="mt-4">

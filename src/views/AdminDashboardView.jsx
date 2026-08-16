@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { DEPARTMENTS, SECTIONS, YEARS, normalizeDept, deptLabel } from '../lib/departments';
 
 const CATEGORIES = ['Hackathon', 'Workshop', 'Technical', 'Sports', 'Cultural', 'Arts', 'Music', 'Startup', 'Seminar', 'Gaming'];
-const EMPTY = { title: '', category: 'Technical', department: 'CSE', date: '', time: '', deadline: '', venue: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '', image: '' };
+const EMPTY = { title: '', category: 'Technical', department: 'CSE', date: '', time: '', deadline: '', venue: '', coordinator: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '', image: '' };
 
 const selectCls = 'h-10 w-full rounded-xl border border-amrita-line bg-white px-3 text-[13px] font-medium text-amrita-ink outline-none transition focus:border-amrita-maroon focus:ring-2 focus:ring-amrita-maroon/10';
 const statusTone = { Open: 'success', 'Almost Full': 'warning', Closed: 'danger', Upcoming: 'maroon', Completed: 'neutral' };
@@ -52,6 +52,7 @@ function EventForm({ initial, onSave, onCancel }) {
           <p className="mt-1 text-[11px] text-amrita-muted">After this date registration closes automatically and the event stops showing on the public site.</p>
         </div>
         <div className="md:col-span-2"><Input label="Venue" placeholder="e.g. Tech Arena Gate 1" value={form.venue} onChange={(e) => set('venue', e.target.value)} required /></div>
+        <div className="md:col-span-2"><Input label="Faculty / Staff coordinator" placeholder="e.g. Dr. Anita Menon" value={form.coordinator} onChange={(e) => set('coordinator', e.target.value)} /></div>
         <div className="md:col-span-2"><Input label="Cover image URL (optional)" placeholder="https://images.unsplash.com/…" value={form.image} onChange={(e) => set('image', e.target.value)} /></div>
         <div className="md:col-span-2"><Input label="Google Maps link" placeholder="Share URL" value={form.mapsLink} onChange={(e) => set('mapsLink', e.target.value)} /></div>
         <Input label="Max seats" type="number" value={form.maxSeats} onChange={(e) => set('maxSeats', parseInt(e.target.value) || 1)} />
