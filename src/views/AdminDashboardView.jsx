@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DEPARTMENTS, SECTIONS, YEARS, normalizeDept, deptLabel } from '../lib/departments';
-import { isPastDeadline } from '../components/eventUi';
+import { isPastDeadline, isEventOver } from '../components/eventUi';
 
 const CATEGORIES = ['Hackathon', 'Workshop', 'Technical', 'Sports', 'Cultural', 'Arts', 'Music', 'Startup', 'Seminar', 'Gaming'];
 const EMPTY = { title: '', category: 'Technical', department: 'CSE', date: '', time: '', deadline: '', venue: '', coordinator: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '', image: '' };
@@ -955,7 +955,9 @@ export default function AdminDashboardView({ setView }) {
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-[14px] font-bold text-amrita-ink">{ev.title}</p>
                             <Badge tone={statusTone[ev.status] || 'neutral'}>{ev.status}</Badge>
-                            {isPastDeadline(ev) && <Badge tone="danger">Hidden · deadline passed</Badge>}
+                            {isEventOver(ev)
+                              ? <Badge tone="danger">Over · hidden from public</Badge>
+                              : isPastDeadline(ev) && <Badge tone="warning">Registration closed</Badge>}
                           </div>
                           <p className="mt-1 font-mono text-[11px] text-amrita-muted">{ev.date} · {ev.venue} · {ev.category} · {ev.seatsFilled}/{ev.maxSeats} filled{ev.deadline ? ` · reg. by ${ev.deadline}` : ''}</p>
                         </div>

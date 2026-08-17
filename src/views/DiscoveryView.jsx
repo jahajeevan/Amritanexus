@@ -55,10 +55,10 @@ function Chip({ active, children, onClick }) {
 
 export default function DiscoveryView({ setView }) {
   const { events: allEvents } = useData();
-  // The directory shows EVERY event. Past-deadline ones are not hidden — they
-  // still appear (the card marks them "Registration closed") and are ordered
-  // last, so nothing an admin creates silently disappears from the catalog.
-  const events = allEvents;
+  // The directory shows every event that isn't over yet. An event stays listed
+  // (registration open OR closed) right up until its event date passes — then
+  // it's over and drops off automatically.
+  const events = useMemo(() => allEvents.filter(isEventVisible), [allEvents]);
 
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
