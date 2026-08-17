@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DEPARTMENTS, SECTIONS, YEARS, normalizeDept, deptLabel } from '../lib/departments';
+import { isPastDeadline } from '../components/eventUi';
 
 const CATEGORIES = ['Hackathon', 'Workshop', 'Technical', 'Sports', 'Cultural', 'Arts', 'Music', 'Startup', 'Seminar', 'Gaming'];
 const EMPTY = { title: '', category: 'Technical', department: 'CSE', date: '', time: '', deadline: '', venue: '', coordinator: '', description: '', maxSeats: 100, status: 'Open', prizes: '', rules: '', points: 50, mapsLink: '', image: '' };
@@ -29,10 +30,11 @@ function EventForm({ initial, onSave, onCancel }) {
     if (!form.title || !form.date || !form.venue) return setError('Title, event date and venue are required.');
     if (!form.deadline) return setError('Set the registration deadline (last day students can register).');
     if (form.deadline && form.date && form.deadline > form.date) return setError('Registration deadline must be on or before the event date.');
+    setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 300));
-    onSave(form);
+    const r = await onSave(form);
     setLoading(false);
+    if (r && r.success === false) setError(r.message || 'Could not save the event. Please sign in again and retry.');
   };
 
   return (
@@ -839,7 +841,14 @@ export default function AdminDashboardView({ setView }) {
   const openEvents = events.filter((e) => e.status === 'Open').length;
   const board = [...leaderboard].sort((a, b) => b.points - a.points);
 
-  const saveEvent = (data) => { editTarget ? updateEvent(editTarget.id, data) : addEvent(data); setShowForm(false); setEditTarget(null); };
+  const saveEvent = async (data) => {
+    const r = editTarget ? await updateEvent(editTarget.id, data) : await addEvent(data);
+    // Keep the form open and let EventForm show the error when a save fails,
+    // instead of silently closing as if it worked.
+    if (r && r.success === false) return r;
+    setShowForm(false); setEditTarget(null);
+    return { success: true };
+  };
   const startEdit = (ev) => { setEditTarget(ev); setShowForm(true); setTab('events'); };
 
   const exportCSV = () => {
@@ -946,8 +955,9 @@ export default function AdminDashboardView({ setView }) {
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-[14px] font-bold text-amrita-ink">{ev.title}</p>
                             <Badge tone={statusTone[ev.status] || 'neutral'}>{ev.status}</Badge>
+                            {isPastDeadline(ev) && <Badge tone="danger">Hidden · deadline passed</Badge>}
                           </div>
-                          <p className="mt-1 font-mono text-[11px] text-amrita-muted">{ev.date} · {ev.venue} · {ev.category} · {ev.seatsFilled}/{ev.maxSeats} filled</p>
+                          <p className="mt-1 font-mono text-[11px] text-amrita-muted">{ev.date} · {ev.venue} · {ev.category} · {ev.seatsFilled}/{ev.maxSeats} filled{ev.deadline ? ` · reg. by ${ev.deadline}` : ''}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
                           <button onClick={() => startEdit(ev)} className="grid h-9 w-9 place-items-center rounded-lg border border-amrita-line text-amrita-slate hover:border-amrita-maroon hover:text-amrita-maroon"><Edit3 className="h-4 w-4" /></button>

@@ -300,14 +300,29 @@ export function DataProvider({ children }) {
   };
   const addEvent = async (info) => {
     const r = await adminAction('createEvent', info);
-    if (r) { if (r.success) await refreshCatalog(); return r; }
+    if (r) {
+      if (r.success) {
+        await refreshCatalog();
+        // Apply the server's own copy on top so the new event shows immediately,
+        // even if the public catalog re-read is momentarily stale/empty.
+        if (r.event) setEvents((prev) => [r.event, ...prev.filter((e) => e.id !== r.event.id)]);
+      }
+      return r;
+    }
     return addEventLocal(info);
   };
 
   const updateEvent = async (arg1, arg2) => {
     const [eventId, info] = typeof arg1 === 'string' ? [arg1, arg2] : [arg1.id, arg1];
     const r = await adminAction('updateEvent', { ...info, id: eventId });
-    if (r) { if (r.success) await refreshCatalog(); return r; }
+    if (r) {
+      if (r.success) {
+        await refreshCatalog();
+        // Server truth wins — reflect the edit immediately regardless of catalog lag.
+        if (r.event) setEvents((prev) => prev.map((e) => (e.id === eventId ? r.event : e)));
+      }
+      return r;
+    }
     setEvents((prev) => prev.map((e) => (e.id === eventId ? { ...e, ...info, maxSeats: parseInt(info.maxSeats) || e.maxSeats } : e)));
     return { success: true };
   };
