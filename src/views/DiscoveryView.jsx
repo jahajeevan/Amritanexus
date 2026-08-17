@@ -55,8 +55,9 @@ function Chip({ active, children, onClick }) {
 
 export default function DiscoveryView({ setView }) {
   const { events: allEvents } = useData();
-  // Public directory shows only events still open for registration (deadline
-  // not passed). Past-deadline events drop off automatically.
+  // The directory shows every event that isn't over yet. An event stays listed
+  // (registration open OR closed) right up until its event date passes — then
+  // it's over and drops off automatically.
   const events = useMemo(() => allEvents.filter(isEventVisible), [allEvents]);
 
   const [query, setQuery] = useState('');
@@ -98,6 +99,10 @@ export default function DiscoveryView({ setView }) {
     if (onlyAvailable) list = list.filter((e) => seatInfo(e).isOpen);
 
     list.sort((a, b) => {
+      // Still-open (registerable) events always rank above closed/past ones.
+      const openA = isEventVisible(a) ? 0 : 1;
+      const openB = isEventVisible(b) ? 0 : 1;
+      if (openA !== openB) return openA - openB;
       if (sort === 'date-asc') return new Date(a.date) - new Date(b.date);
       if (sort === 'date-desc') return new Date(b.date) - new Date(a.date);
       if (sort === 'seats') return seatInfo(b).seatsLeft - seatInfo(a).seatsLeft;

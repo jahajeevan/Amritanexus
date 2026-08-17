@@ -24,6 +24,7 @@ export function statusBadgeClass(status) {
 }
 
 // True once an event's registration deadline (last day to register) has passed.
+// Used only to mark a card "Registration closed" — it does NOT hide the event.
 export function isPastDeadline(event) {
   if (!event?.deadline) return false;
   const d = new Date(`${event.deadline}T23:59:59`);
@@ -31,10 +32,20 @@ export function isPastDeadline(event) {
   return Date.now() > d.getTime();
 }
 
-// Whether an event should still appear on the PUBLIC site. Once its deadline
-// passes it drops off the homepage and events directory automatically.
+// True once the event's own date has passed — i.e. the event is over.
+// An event stays "not over" through the whole of its event day.
+export function isEventOver(event) {
+  if (!event?.date) return false;
+  const d = new Date(`${event.date}T23:59:59`);
+  if (Number.isNaN(d.getTime())) return false;
+  return Date.now() > d.getTime();
+}
+
+// Whether an event should still appear on the PUBLIC site. It stays visible
+// (registration may be open or closed) until the event is over — once the
+// event DATE passes it drops off the homepage and directory automatically.
 export function isEventVisible(event) {
-  return !isPastDeadline(event);
+  return !isEventOver(event);
 }
 
 // Seat math used by cards, the hero seat bar and the registration card.

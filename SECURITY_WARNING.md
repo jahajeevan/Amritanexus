@@ -11,7 +11,7 @@ pk_test_Y29vbC1nb2JsaW4tMjkuY2xlcmsuYWNjb3VudHMuZGV2JA
 
 **Secret Key (DANGER - DO NOT COMMIT):**
 ```
-sk_test_77yCNT2CoqYv81U42z0VvZD735q1VX4h0JTGTGzpds
+sk_test_********************************  (REDACTED — keep in Vercel env only)
 ```
 ❌ NEVER add this to your repository or share it publicly!
 
@@ -48,7 +48,7 @@ If you build a backend (Node.js/Express), use environment variables:
 
 ```javascript
 // backend/.env (NEVER COMMIT THIS)
-CLERK_SECRET_KEY=sk_test_77yCNT2CoqYv81U42z0VvZD735q1VX4h0JTGTGzpds
+CLERK_SECRET_KEY=sk_test_********************************  (set the real value in env, never here)
 
 // backend/server.js
 const secretKey = process.env.CLERK_SECRET_KEY;
